@@ -1,0 +1,154 @@
+export interface BoardPackData {
+  generatedDate: string;
+  organisationName: string;
+  filterSummary: string;
+  totalAssets: number;
+  agentAssets: number;
+  lifecycleCounts: Record<string, number>;
+  autonomyCounts: Record<string, number>;
+  averageFrameScore: number;
+  aaefDistribution: Record<string, number>;
+  totalCostSgd: number;
+  measuredBenefitSgd: number;
+  assumedOrEstimatedSgd: number;
+  netBenefitSgd: number;
+  roiPercent: number;
+  valueAtRiskSgd: number;
+  riskAdjustedRoiPercent: number;
+  appetiteBreachCount: number;
+  overdueActionsCount: number;
+  topRisks: Array<{ code: string; title: string; assetCode: string; residualScore: number; breached: boolean }>;
+  recentIncidents: Array<{ code: string; title: string; assetCode: string; severity: string; date: string }>;
+}
+
+function escapePdfText(text: string): string {
+  return text
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+/**
+ * Generates a print-ready A4 (595.28 x 841.89 pt) PDF Board Pack in British English.
+ */
+export function generateBoardPackPdfBuffer(data: BoardPackData): Buffer {
+  const ops: string[] = [];
+
+  // Header Banner (Dark Navy #1e3a5f)
+  ops.push("0.118 0.227 0.373 rg");
+  ops.push("36 765 523.28 48 re f");
+
+  ops.push("1 1 1 rg");
+  ops.push("BT /F2 14 Tf 48 791 Td (AI GOVERNANCE COMMAND CENTRE: BOARD PACK) Tj ET");
+  ops.push(
+    `BT /F1 9 Tf 48 776 Td (${escapePdfText(
+      `Organisation: ${data.organisationName} | Date: ${data.generatedDate} | Scope: ${data.filterSummary}`
+    )}) Tj ET`
+  );
+
+  let y = 742;
+  const line = (text: string, bold = false, size = 9, indent = 42, step = 13) => {
+    ops.push("0.06 0.09 0.16 rg");
+    ops.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${indent} ${y} Td (${escapePdfText(text)}) Tj ET`);
+    y -= step;
+  };
+
+  const sectionHeader = (title: string) => {
+    y -= 4;
+    ops.push("0.945 0.961 0.976 rg");
+    ops.push(`36 ${y - 4} 523.28 16 re f`);
+    ops.push("0.118 0.227 0.373 rg");
+    ops.push(`BT /F2 10 Tf 42 ${y} Td (${escapePdfText(title)}) Tj ET`);
+    y -= 18;
+  };
+
+  sectionHeader("1. EXECUTIVE PORTFOLIO SUMMARY");
+  line(
+    `Registered AI Assets: ${data.totalAssets} (${data.agentAssets} flagged as AI Agents governed under AAEF)`,
+    true
+  );
+  line(
+    `By Lifecycle Stage: Idea (${data.lifecycleCounts.IDEA ?? 0}), Pilot (${data.lifecycleCounts.PILOT ?? 0}), Production (${data.lifecycleCounts.PRODUCTION ?? 0}), Retired (${data.lifecycleCounts.RETIRED ?? 0})`
+  );
+  line(
+    `By Autonomy Level: Assistive (${data.autonomyCounts.ASSISTIVE ?? 0}), Human-in-Loop (${data.autonomyCounts.HUMAN_IN_THE_LOOP ?? 0}), Human-on-Loop (${data.autonomyCounts.HUMAN_ON_THE_LOOP ?? 0}), Autonomous (${data.autonomyCounts.AUTONOMOUS ?? 0})`
+  );
+
+  sectionHeader("2. FRAME GOVERNANCE ENVELOPE & AAEF AGENT APPRAISAL");
+  line(`Average Portfolio FRAME Maturity Score: ${data.averageFrameScore.toFixed(2)} / 4.00`, true);
+  line(
+    `AAEF Agent Profile Distribution: Operational (${data.aaefDistribution.OPERATIONAL ?? 0}), Developing (${data.aaefDistribution.DEVELOPING ?? 0}), Restricted (${data.aaefDistribution.RESTRICTED ?? 0}), Under Review (${data.aaefDistribution.UNDER_REVIEW ?? 0})`
+  );
+  line(`Overdue Governance Actions Requiring Attention: ${data.overdueActionsCount}`);
+
+  sectionHeader("3. PORTFOLIO ROI, VALUE REALISATION & VALUE-AT-RISK (SGD)");
+  line(
+    `Total Cost of Ownership (TCO): SGD ${data.totalCostSgd.toLocaleString()} | Net Benefit: SGD ${data.netBenefitSgd.toLocaleString()} (ROI: ${data.roiPercent}%)`,
+    true
+  );
+  line(
+    `Measured Benefit (Verified Ledger): SGD ${data.measuredBenefitSgd.toLocaleString()} | Estimated & Assumed Benefit (Unverified): SGD ${data.assumedOrEstimatedSgd.toLocaleString()}`
+  );
+  line(
+    `Value-at-Risk (Linked Residual Risk Exposure): -SGD ${data.valueAtRiskSgd.toLocaleString()} | Risk-Adjusted ROI: ${data.riskAdjustedRoiPercent}%`
+  );
+
+  sectionHeader(`4. TOP RISKS VERSUS APPETITE (${data.appetiteBreachCount} APPETITE BREACHES)`);
+  if (data.topRisks.length === 0) {
+    line("No active risks in selected filter scope.");
+  } else {
+    for (const r of data.topRisks.slice(0, 6)) {
+      line(
+        `[${r.code}] (${r.assetCode}) Score ${r.residualScore} ${r.breached ? "[BREACH]" : "[WITHIN APPETITE]"}: ${r.title.slice(0, 68)}`
+      );
+    }
+  }
+
+  sectionHeader("5. RECENT INCIDENTS & NEAR MISSES");
+  if (data.recentIncidents.length === 0) {
+    line("No recent incidents recorded in selected filter scope.");
+  } else {
+    for (const inc of data.recentIncidents.slice(0, 5)) {
+      line(`[${inc.code}] (${inc.assetCode}) ${inc.severity} on ${inc.date}: ${inc.title.slice(0, 68)}`);
+    }
+  }
+
+  // Footer attribution on A4 bottom margin
+  ops.push("0.88 0.91 0.94 RG 36 48 m 559.28 48 l S");
+  ops.push("0.35 0.40 0.47 rg");
+  ops.push(
+    "BT /F1 8 Tf 36 34 Td (FRAME and AAEF by Ian Loe, Tactics Solutions, licensed CC BY-NC 4.0. Generated by AI Governance Command Centre.) Tj ET"
+  );
+
+  const contentStream = ops.join("\n");
+  const contentByteLength = Buffer.byteLength(contentStream, "utf-8");
+
+  const objects: string[] = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>\nendobj",
+    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj",
+    "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj",
+    `6 0 obj\n<< /Length ${contentByteLength} >>\nstream\n${contentStream}\nendstream\nendobj`,
+  ];
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+
+  for (const obj of objects) {
+    offsets.push(Buffer.byteLength(pdf, "utf-8"));
+    pdf += `${obj}\n`;
+  }
+
+  const xrefStart = Buffer.byteLength(pdf, "utf-8");
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i <= objects.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
+
+  return Buffer.from(pdf, "utf-8");
+}
