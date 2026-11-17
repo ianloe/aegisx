@@ -55,6 +55,9 @@ interface BusinessUnitRow {
   id: string;
   code: string;
   name: string;
+  country: string;
+  headName: string | null;
+  _count?: { assets: number; users: number };
 }
 
 function getRoleTierLabel(code: string): "Administrator" | "Editor" | "Viewer" {
@@ -80,11 +83,12 @@ export function AdminClient({
   businessUnits: BusinessUnitRow[];
   canEdit: boolean;
 }) {
-  const [tab, setTab] = useState<"params" | "frame" | "aaef" | "users">("params");
+  const [tab, setTab] = useState<"params" | "business-units" | "frame" | "aaef" | "users">("params");
   const [configs, setConfigs] = useState(initialConfigs);
   const [criteria, setCriteria] = useState(initialCriteria);
   const [profiles, setProfiles] = useState(initialProfiles);
   const [users, setUsers] = useState(initialUsers);
+  const [buList, setBuList] = useState<BusinessUnitRow[]>(businessUnits);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -95,22 +99,102 @@ export function AdminClient({
   const [newRoleId, setNewRoleId] = useState(roles[0]?.id || "");
   const [newBuId, setNewBuId] = useState("");
 
-  async function saveGovernanceConfig(cfg: ConfigRow, rawJson: string) {
+  // New business unit state
+  const [newBuCode, setNewBuCode] = useState("");
+  const [newBuName, setNewBuName] = useState("");
+  const [newBuCountry, setNewBuCountry] = useState("Singapore");
+  const [newBuHead, setNewBuHead] = useState("");
+
+  async function saveGovernanceConfig(cfg: ConfigRow, valueJson: Record<string, unknown>) {
     setStatusMsg(null);
     setErrorMsg(null);
     try {
-      const parsed = JSON.parse(rawJson);
       const res = await fetch("/api/admin/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "GOVERNANCE_CONFIG", key: cfg.key, valueJson: parsed }),
+        body: JSON.stringify({ type: "GOVERNANCE_CONFIG", key: cfg.key, valueJson }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save configuration.");
-      setConfigs((prev) => prev.map((c) => (c.key === cfg.key ? { ...c, valueJson: parsed } : c)));
+      setConfigs((prev) => prev.map((c) => (c.key === cfg.key ? { ...c, valueJson } : c)));
       setStatusMsg(`Saved ${cfg.key} configuration.`);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Invalid JSON.");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save configuration.");
+    }
+  }
+
+  async function handleCreateBusinessUnit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatusMsg(null);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/admin/business-units", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newBuCode,
+          name: newBuName,
+          country: newBuCountry,
+          headName: newBuHead || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add business unit.");
+      setBuList((prev) => [...prev, data.businessUnit].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewBuCode("");
+      setNewBuName("");
+      setNewBuHead("");
+      setStatusMsg(`Added business unit ${data.businessUnit.name} (${data.businessUnit.code}).`);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to add business unit.");
+    }
+  }
+
+  async function handleUpdateBusinessUnit(bu: BusinessUnitRow) {
+    setStatusMsg(null);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/admin/business-units", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: bu.id,
+          code: bu.code,
+          name: bu.name,
+          country: bu.country,
+          headName: bu.headName || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update business unit.");
+      setBuList((prev) => prev.map((row) => (row.id === bu.id ? data.businessUnit : row)));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.businessUnit?.id === bu.id
+            ? { ...u, businessUnit: { id: data.businessUnit.id, code: data.businessUnit.code, name: data.businessUnit.name } }
+            : u,
+        ),
+      );
+      setStatusMsg(`Saved business unit ${data.businessUnit.name}.`);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to update business unit.");
+    }
+  }
+
+  async function handleDeleteBusinessUnit(bu: BusinessUnitRow) {
+    setStatusMsg(null);
+    setErrorMsg(null);
+    if (!window.confirm(`Remove business unit "${bu.name}" (${bu.code})?`)) return;
+    try {
+      const res = await fetch(`/api/admin/business-units?id=${encodeURIComponent(bu.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove business unit.");
+      setBuList((prev) => prev.filter((row) => row.id !== bu.id));
+      setStatusMsg(`Removed business unit ${bu.name}.`);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to remove business unit.");
     }
   }
 
@@ -218,6 +302,7 @@ export function AdminClient({
       <div className="flex flex-wrap gap-2 border-b border-border pb-3">
         {[
           { id: "params", label: "Parameters & Appetite" },
+          { id: "business-units", label: "Business Units" },
           { id: "frame", label: "FRAME Criteria & Rubrics" },
           { id: "aaef", label: "AAEF Profile Rules" },
           { id: "users", label: "Users & Roles" },
@@ -250,6 +335,189 @@ export function AdminClient({
           {configs.map((cfg) => (
             <ConfigCard key={cfg.key} cfg={cfg} canEdit={canEdit} onSave={saveGovernanceConfig} />
           ))}
+        </div>
+      )}
+
+      {tab === "business-units" && (
+        <div className="space-y-6">
+          {canEdit && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Business Unit</CardTitle>
+                <CardDescription>
+                  Create an organisational business unit for AI asset ownership, risk grouping, and user scoping.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateBusinessUnit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Code (e.g. SG-FIN)"
+                    value={newBuCode}
+                    onChange={(e) => setNewBuCode(e.target.value.toUpperCase())}
+                  />
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Business Unit Name"
+                    value={newBuName}
+                    onChange={(e) => setNewBuName(e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Country (e.g. Singapore)"
+                    value={newBuCountry}
+                    onChange={(e) => setNewBuCountry(e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Head / Lead Name (optional)"
+                    value={newBuHead}
+                    onChange={(e) => setNewBuHead(e.target.value)}
+                  />
+                  <Button type="submit">Add Business Unit</Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Registered Business Units ({buList.length})</CardTitle>
+              <CardDescription>
+                Edit details inline and click Save. Business units with assigned AI assets or users must be reassigned before removal.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border bg-surface-muted/60 text-muted-foreground">
+                    <th className="py-2.5 px-4 font-medium">Code</th>
+                    <th className="py-2.5 px-4 font-medium">Name</th>
+                    <th className="py-2.5 px-4 font-medium">Country</th>
+                    <th className="py-2.5 px-4 font-medium">Head / Lead</th>
+                    <th className="py-2.5 px-4 font-medium">Assets</th>
+                    <th className="py-2.5 px-4 font-medium">Users</th>
+                    {canEdit && <th className="py-2.5 px-4 font-medium">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {buList.map((bu) => {
+                    const assetCount = bu._count?.assets ?? 0;
+                    const userCount = bu._count?.users ?? 0;
+                    const inUse = assetCount > 0 || userCount > 0;
+                    return (
+                      <tr key={bu.id} className="border-b border-border last:border-0">
+                        <td className="py-2 px-4">
+                          {canEdit ? (
+                            <Input
+                              aria-label={`Code for ${bu.name}`}
+                              value={bu.code}
+                              onChange={(e) =>
+                                setBuList((prev) =>
+                                  prev.map((row) =>
+                                    row.id === bu.id ? { ...row, code: e.target.value.toUpperCase() } : row,
+                                  ),
+                                )
+                              }
+                              className="h-7 text-xs w-28 font-mono"
+                            />
+                          ) : (
+                            <Badge variant="outline">{bu.code}</Badge>
+                          )}
+                        </td>
+                        <td className="py-2 px-4">
+                          {canEdit ? (
+                            <Input
+                              aria-label={`Name for ${bu.code}`}
+                              value={bu.name}
+                              onChange={(e) =>
+                                setBuList((prev) =>
+                                  prev.map((row) => (row.id === bu.id ? { ...row, name: e.target.value } : row)),
+                                )
+                              }
+                              className="h-7 text-xs min-w-[180px]"
+                            />
+                          ) : (
+                            <span className="font-medium">{bu.name}</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-4">
+                          {canEdit ? (
+                            <Input
+                              aria-label={`Country for ${bu.code}`}
+                              value={bu.country}
+                              onChange={(e) =>
+                                setBuList((prev) =>
+                                  prev.map((row) => (row.id === bu.id ? { ...row, country: e.target.value } : row)),
+                                )
+                              }
+                              className="h-7 text-xs w-32"
+                            />
+                          ) : (
+                            bu.country
+                          )}
+                        </td>
+                        <td className="py-2 px-4">
+                          {canEdit ? (
+                            <Input
+                              aria-label={`Head for ${bu.code}`}
+                              placeholder="Unassigned"
+                              value={bu.headName ?? ""}
+                              onChange={(e) =>
+                                setBuList((prev) =>
+                                  prev.map((row) => (row.id === bu.id ? { ...row, headName: e.target.value } : row)),
+                                )
+                              }
+                              className="h-7 text-xs min-w-[140px]"
+                            />
+                          ) : (
+                            bu.headName || "Unassigned"
+                          )}
+                        </td>
+                        <td className="py-2 px-4">
+                          <Badge variant={assetCount > 0 ? "info" : "secondary"}>{assetCount}</Badge>
+                        </td>
+                        <td className="py-2 px-4">
+                          <Badge variant={userCount > 0 ? "info" : "secondary"}>{userCount}</Badge>
+                        </td>
+                        {canEdit && (
+                          <td className="py-2 px-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateBusinessUnit(bu)}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="danger"
+                                disabled={inUse}
+                                title={
+                                  inUse
+                                    ? "Reassign linked AI assets and users before removing this business unit."
+                                    : "Remove business unit"
+                                }
+                                onClick={() => handleDeleteBusinessUnit(bu)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -404,7 +672,7 @@ export function AdminClient({
                   <div className="flex gap-2">
                     <Select value={newBuId} onChange={(e) => setNewBuId(e.target.value)} aria-label="Business unit">
                       <option value="">All Business Units</option>
-                      {businessUnits.map((b) => (
+                      {buList.map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.name}
                         </option>
@@ -469,7 +737,7 @@ export function AdminClient({
                             className="h-7 text-xs min-w-[160px]"
                           >
                             <option value="">Enterprise-wide</option>
-                            {businessUnits.map((b) => (
+                            {buList.map((b) => (
                               <option key={b.id} value={b.id}>
                                 {b.name}
                               </option>
@@ -508,6 +776,12 @@ export function AdminClient({
   );
 }
 
+const CONFIG_TITLES: Record<string, string> = {
+  RISK_APPETITE: "Risk Appetite Thresholds",
+  FINANCIAL_DEFAULTS: "Financial & ROI Defaults",
+  GOVERNANCE_CADENCE: "Governance Cadence & Trajectory",
+};
+
 function ConfigCard({
   cfg,
   canEdit,
@@ -515,29 +789,210 @@ function ConfigCard({
 }: {
   cfg: ConfigRow;
   canEdit: boolean;
-  onSave: (cfg: ConfigRow, rawJson: string) => void;
+  onSave: (cfg: ConfigRow, valueJson: Record<string, unknown>) => void;
 }) {
-  const [raw, setRaw] = useState(JSON.stringify(cfg.valueJson, null, 2));
+  const [values, setValues] = useState<Record<string, unknown>>(cfg.valueJson);
+  const [fallbackRaw, setFallbackRaw] = useState(JSON.stringify(cfg.valueJson, null, 2));
+  const [fallbackErr, setFallbackErr] = useState<string | null>(null);
+
+  function handleSave() {
+    setFallbackErr(null);
+    if (cfg.key === "RISK_APPETITE" || cfg.key === "FINANCIAL_DEFAULTS" || cfg.key === "GOVERNANCE_CADENCE") {
+      onSave(cfg, values);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(fallbackRaw);
+      onSave(cfg, parsed);
+    } catch {
+      setFallbackErr("Invalid JSON syntax.");
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <div>
-          <CardTitle>{cfg.key}</CardTitle>
+          <CardTitle>{CONFIG_TITLES[cfg.key] || cfg.key}</CardTitle>
           <CardDescription>{cfg.description}</CardDescription>
         </div>
         {canEdit && (
-          <Button type="button" size="sm" onClick={() => onSave(cfg, raw)}>
+          <Button type="button" size="sm" onClick={handleSave}>
             Save
           </Button>
         )}
       </CardHeader>
-      <CardContent>
-        <Textarea
-          disabled={!canEdit}
-          className="font-mono text-xs min-h-[130px]"
-          value={raw}
-          onChange={(e) => setRaw(e.target.value)}
-        />
+      <CardContent className="space-y-4">
+        {cfg.key === "RISK_APPETITE" && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Appetite Threshold (1 to 25)</label>
+              <Input
+                type="number"
+                min={1}
+                max={25}
+                disabled={!canEdit}
+                value={Number(values.maxAcceptableResidualScore ?? 12)}
+                onChange={(e) =>
+                  setValues({ ...values, maxAcceptableResidualScore: Math.max(1, Math.min(25, Number(e.target.value))) })
+                }
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Residual scores above this trigger breach alerts.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Critical Risk Threshold (1 to 25)</label>
+              <Input
+                type="number"
+                min={1}
+                max={25}
+                disabled={!canEdit}
+                value={Number(values.criticalThreshold ?? 16)}
+                onChange={(e) =>
+                  setValues({ ...values, criticalThreshold: Math.max(1, Math.min(25, Number(e.target.value))) })
+                }
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Scores at or above this are flagged Critical.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Board Escalation Score (1 to 25)</label>
+              <Input
+                type="number"
+                min={1}
+                max={25}
+                disabled={!canEdit}
+                value={Number(values.escalateToBoardScore ?? 20)}
+                onChange={(e) =>
+                  setValues({ ...values, escalateToBoardScore: Math.max(1, Math.min(25, Number(e.target.value))) })
+                }
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Scores at or above this escalate to the Board.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {cfg.key === "FINANCIAL_DEFAULTS" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Default Reporting Currency</label>
+              <Select
+                disabled={!canEdit}
+                value={String(values.defaultCurrency ?? "SGD")}
+                onChange={(e) =>
+                  setValues({
+                    ...values,
+                    defaultCurrency: e.target.value,
+                    supportedCurrencies: ["SGD", "USD"],
+                  })
+                }
+              >
+                <option value="SGD">SGD (Singapore Dollar, default)</option>
+                <option value="USD">USD (US Dollar)</option>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Supported currencies: SGD and USD.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">USD to SGD Exchange Rate</label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0.1}
+                disabled={!canEdit}
+                value={Number(values.usdToSgdRate ?? 1.34)}
+                onChange={(e) => setValues({ ...values, usdToSgdRate: Number(e.target.value) })}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                1 USD = {Number(values.usdToSgdRate ?? 1.34).toFixed(2)} SGD
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Annual NPV Discount Rate (%)</label>
+              <Input
+                type="number"
+                step="0.5"
+                min={0}
+                max={50}
+                disabled={!canEdit}
+                value={Number((Number(values.npvDiscountRate ?? 0.08) * 100).toFixed(2))}
+                onChange={(e) =>
+                  setValues({ ...values, npvDiscountRate: Number((Number(e.target.value) / 100).toFixed(4)) })
+                }
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Used to discount quarterly cashflows in NPV calculations.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">NPV Horizon (Quarters)</label>
+              <Input
+                type="number"
+                min={1}
+                max={40}
+                disabled={!canEdit}
+                value={Number(values.npvHorizonQuarters ?? 12)}
+                onChange={(e) => setValues({ ...values, npvHorizonQuarters: Math.max(1, Number(e.target.value)) })}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {(Number(values.npvHorizonQuarters ?? 12) / 4).toFixed(1)} years evaluation window.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {cfg.key === "GOVERNANCE_CADENCE" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Maximum Role Review Age (Days)</label>
+              <Input
+                type="number"
+                min={1}
+                max={730}
+                disabled={!canEdit}
+                value={Number(values.roleReviewMaxAgeDays ?? 180)}
+                onChange={(e) =>
+                  setValues({ ...values, roleReviewMaxAgeDays: Math.max(1, Number(e.target.value)) })
+                }
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Flags assets with lapsed FRAME role accountability reviews.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">AAEF Trajectory Delta Threshold</label>
+              <Input
+                type="number"
+                step="0.05"
+                min={0.05}
+                max={2}
+                disabled={!canEdit}
+                value={Number(values.trajectoryDeltaThreshold ?? 0.25)}
+                onChange={(e) => setValues({ ...values, trajectoryDeltaThreshold: Number(e.target.value) })}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Minimum score change between appraisals to classify Improving or Degrading.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {cfg.key !== "RISK_APPETITE" && cfg.key !== "FINANCIAL_DEFAULTS" && cfg.key !== "GOVERNANCE_CADENCE" && (
+          <div className="space-y-1">
+            <Textarea
+              disabled={!canEdit}
+              className="font-mono text-xs min-h-[130px]"
+              value={fallbackRaw}
+              onChange={(e) => setFallbackRaw(e.target.value)}
+            />
+            {fallbackErr && <p className="text-xs text-red-600">{fallbackErr}</p>}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

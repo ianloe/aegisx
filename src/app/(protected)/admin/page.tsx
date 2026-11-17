@@ -30,7 +30,10 @@ export default async function AdminPage() {
       orderBy: { name: "asc" },
     }),
     prisma.role.findMany({ orderBy: { name: "asc" } }),
-    prisma.businessUnit.findMany({ orderBy: { name: "asc" } }),
+    prisma.businessUnit.findMany({
+      include: { _count: { select: { assets: true, users: true } } },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
