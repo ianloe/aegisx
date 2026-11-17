@@ -90,6 +90,7 @@ const patchUserSchema = z.object({
   roleId: z.string().optional(),
   isActive: z.boolean().optional(),
   businessUnitId: z.string().nullable().optional(),
+  password: z.string().min(8).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -100,6 +101,10 @@ export async function PATCH(request: Request) {
   const parsed = patchUserSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid update payload." }, { status: 400 });
+  }
+
+  if (parsed.data.id === auth.session.id && parsed.data.isActive === false) {
+    return NextResponse.json({ error: "You cannot deactivate your own active administrator account." }, { status: 400 });
   }
 
   const before = await prisma.user.findUnique({
@@ -117,6 +122,7 @@ export async function PATCH(request: Request) {
         roleId: parsed.data.roleId ?? before.roleId,
         isActive: parsed.data.isActive ?? before.isActive,
         businessUnitId: parsed.data.businessUnitId !== undefined ? parsed.data.businessUnitId : before.businessUnitId,
+        ...(parsed.data.password ? { passwordHash: hashPassword(parsed.data.password) } : {}),
       },
       select: {
         id: true,
@@ -134,7 +140,12 @@ export async function PATCH(request: Request) {
       entityType: "USER",
       entityId: u.id,
       beforeState: before,
-      afterState: { roleId: u.role.id, isActive: u.isActive },
+      afterState: {
+        roleId: u.role.id,
+        isActive: u.isActive,
+        businessUnitId: u.businessUnit?.id ?? null,
+        passwordReset: Boolean(parsed.data.password),
+      },
     });
     return u;
   });

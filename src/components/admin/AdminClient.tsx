@@ -57,6 +57,12 @@ interface BusinessUnitRow {
   name: string;
 }
 
+function getRoleTierLabel(code: string): "Administrator" | "Editor" | "Viewer" {
+  if (code === "ADMIN") return "Administrator";
+  if (code === "EXECUTIVE" || code === "AUDITOR") return "Viewer";
+  return "Editor";
+}
+
 export function AdminClient({
   initialConfigs,
   initialCriteria,
@@ -187,18 +193,21 @@ export function AdminClient({
     }
   }
 
-  async function handleToggleUser(u: UserRow) {
+  async function handleUpdateUser(
+    u: UserRow,
+    patch: { roleId?: string; businessUnitId?: string | null; isActive?: boolean },
+  ) {
     setStatusMsg(null);
     setErrorMsg(null);
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: u.id, isActive: !u.isActive }),
+      body: JSON.stringify({ id: u.id, ...patch }),
     });
     const data = await res.json();
     if (res.ok) {
       setUsers((prev) => prev.map((row) => (row.id === u.id ? data.user : row)));
-      setStatusMsg(`Updated status for ${u.email}.`);
+      setStatusMsg(`Updated account settings for ${u.email}.`);
     } else {
       setErrorMsg(data.error || "Failed to update user.");
     }
@@ -337,9 +346,31 @@ export function AdminClient({
             <Card>
               <CardHeader>
                 <CardTitle>Add Governance User</CardTitle>
-                <CardDescription>Assign least-privilege role and optional business unit scope</CardDescription>
+                <CardDescription>
+                  Create an account and assign an Administrator, Editor, or Viewer role with optional business unit scope.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-md border border-border bg-surface-muted/40 p-2.5">
+                    <span className="font-semibold text-foreground">Administrator</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      <strong>Administrator</strong>: Full system configuration, user management, and write access.
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border bg-surface-muted/40 p-2.5">
+                    <span className="font-semibold text-foreground">Editors</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      <strong>AI Governance Office</strong>, <strong>Asset Owner</strong>, <strong>Assessor</strong>: Create and edit governed records per role scope.
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border bg-surface-muted/40 p-2.5">
+                    <span className="font-semibold text-foreground">Viewers</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      <strong>Executive</strong>, <strong>Auditor</strong>: Read-only access (Auditor also views the immutable audit log).
+                    </p>
+                  </div>
+                </div>
                 <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   <Input
                     type="email"
@@ -363,15 +394,15 @@ export function AdminClient({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
-                  <Select value={newRoleId} onChange={(e) => setNewRoleId(e.target.value)}>
+                  <Select value={newRoleId} onChange={(e) => setNewRoleId(e.target.value)} aria-label="User role">
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.name}
+                        {r.name} ({getRoleTierLabel(r.code)})
                       </option>
                     ))}
                   </Select>
                   <div className="flex gap-2">
-                    <Select value={newBuId} onChange={(e) => setNewBuId(e.target.value)}>
+                    <Select value={newBuId} onChange={(e) => setNewBuId(e.target.value)} aria-label="Business unit">
                       <option value="">All Business Units</option>
                       {businessUnits.map((b) => (
                         <option key={b.id} value={b.id}>
@@ -396,6 +427,7 @@ export function AdminClient({
                   <tr className="border-b border-border bg-surface-muted/60 text-muted-foreground">
                     <th className="py-2.5 px-4 font-medium">Name</th>
                     <th className="py-2.5 px-4 font-medium">Email</th>
+                    <th className="py-2.5 px-4 font-medium">Access Tier</th>
                     <th className="py-2.5 px-4 font-medium">Role</th>
                     <th className="py-2.5 px-4 font-medium">Business Unit</th>
                     <th className="py-2.5 px-4 font-medium">Status</th>
@@ -408,9 +440,45 @@ export function AdminClient({
                       <td className="py-2.5 px-4 font-medium">{u.name}</td>
                       <td className="py-2.5 px-4 text-muted-foreground">{u.email}</td>
                       <td className="py-2.5 px-4">
-                        <Badge variant="outline">{u.role.name}</Badge>
+                        <Badge variant="outline">{getRoleTierLabel(u.role.code)}</Badge>
                       </td>
-                      <td className="py-2.5 px-4">{u.businessUnit ? u.businessUnit.name : "Enterprise-wide"}</td>
+                      <td className="py-2.5 px-4">
+                        {canEdit ? (
+                          <Select
+                            aria-label={`Role for ${u.email}`}
+                            value={u.role.id}
+                            onChange={(e) => handleUpdateUser(u, { roleId: e.target.value })}
+                            className="h-7 text-xs min-w-[170px]"
+                          >
+                            {roles.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Badge variant="outline">{u.role.name}</Badge>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {canEdit ? (
+                          <Select
+                            aria-label={`Business unit for ${u.email}`}
+                            value={u.businessUnit?.id ?? ""}
+                            onChange={(e) => handleUpdateUser(u, { businessUnitId: e.target.value || null })}
+                            className="h-7 text-xs min-w-[160px]"
+                          >
+                            <option value="">Enterprise-wide</option>
+                            {businessUnits.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name}
+                              </option>
+                            ))}
+                          </Select>
+                        ) : (
+                          u.businessUnit ? u.businessUnit.name : "Enterprise-wide"
+                        )}
+                      </td>
                       <td className="py-2.5 px-4">
                         <Badge variant={u.isActive ? "success" : "secondary"}>
                           {u.isActive ? "Active" : "Inactive"}
@@ -418,7 +486,12 @@ export function AdminClient({
                       </td>
                       {canEdit && (
                         <td className="py-2.5 px-4">
-                          <Button type="button" size="sm" variant="outline" onClick={() => handleToggleUser(u)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateUser(u, { isActive: !u.isActive })}
+                          >
                             {u.isActive ? "Deactivate" : "Activate"}
                           </Button>
                         </td>
