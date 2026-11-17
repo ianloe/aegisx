@@ -1,0 +1,88 @@
+[
+  {
+    "code": "FRAME",
+    "name": "FRAME Enterprise AI Governance",
+    "version": "1.0",
+    "description": "Governance envelope for enterprise AI deployment across Focus, Roles, Authority, Metrics, and Evaluation (Ian Loe, Tactics Solutions, CC BY-NC 4.0).",
+    "requirements": [
+      { "code": "FRAME-F", "title": "Focus", "description": "Domain, scope, intended outcome, and data suitability." },
+      { "code": "FRAME-R", "title": "Roles", "description": "Accountable owner, human oversight, and escalation path." },
+      { "code": "FRAME-A", "title": "Authority", "description": "Decision rights separated into autonomous, human-confirmed, and out of scope." },
+      { "code": "FRAME-M", "title": "Metrics", "description": "Activity metrics separated from outcome metrics, quality, and value." },
+      { "code": "FRAME-E", "title": "Evaluation", "description": "Ongoing review of performance, objective alignment, compliance, and adoption." }
+    ]
+  },
+  {
+    "code": "AAEF",
+    "name": "AI Agent Evaluation Framework (AAEF)",
+    "version": "1.0",
+    "description": "Workforce-style appraisal framework for AI agents across five dimensions and four performance profiles (Ian Loe, Tactics Solutions, CC BY-NC 4.0).",
+    "requirements": [
+      { "code": "AAEF-TC", "title": "Task Competence", "description": "Accuracy, reliability, and completion quality on assigned tasks." },
+      { "code": "AAEF-JQ", "title": "Judgement Quality", "description": "Appropriate handling of ambiguity, edge cases, and escalation triggers." },
+      { "code": "AAEF-BA", "title": "Boundary Adherence", "description": "Binary adherence to sanctioned authority rules without breach." },
+      { "code": "AAEF-CE", "title": "Collaboration Effectiveness", "description": "Clarity, handoff quality, and responsiveness with human overseers and peers." },
+      { "code": "AAEF-IT", "title": "Improvement Trajectory", "description": "Directional trend across successive appraisal cycles." }
+    ]
+  },
+  {
+    "code": "COSO",
+    "name": "COSO Internal Control & ERM",
+    "version": "2017",
+    "description": "Enterprise Risk Management and internal control principles.",
+    "requirements": [
+      { "code": "COSO-CE", "title": "Control Environment", "description": "Tone at the top, accountability, and oversight structures." },
+      { "code": "COSO-RA", "title": "Risk Assessment", "description": "Identification and analysis of risks to achieving objectives." },
+      { "code": "COSO-CA", "title": "Control Activities", "description": "Policies, approvals, and technical controls mitigating risk." },
+      { "code": "COSO-MA", "title": "Monitoring Activities", "description": "Ongoing and separate evaluations of control effectiveness." }
+    ]
+  },
+  {
+    "code": "NIST_AI_RMF",
+    "name": "NIST AI RMF",
+    "version": "1.0",
+    "description": "National Institute of Standards and Technology AI Risk Management Framework.",
+    "requirements": [
+      { "code": "NIST-GOVERN", "title": "Govern", "description": "Cultivate and implement a culture of AI risk management." },
+      { "code": "NIST-MAP", "title": "Map", "description": "Contextualise AI system purpose, risks, and impacts." },
+      { "code": "NIST-MEASURE", "title": "Measure", "description": "Assess, analyse, and track AI risks and performance." },
+      { "code": "NIST-MANAGE", "title": "Manage", "description": "Prioritise and act on mapped and measured risks." }
+    ]
+  },
+  {
+    "code": "ISO_42001",
+    "name": "ISO/IEC 42001",
+    "version": "2023",
+    "description": "International standard for Artificial Intelligence Management Systems (AIMS).",
+    "requirements": [
+      { "code": "ISO42001-5", "title": "Leadership and Commitment", "description": "Top management accountability, AI policy, and roles." },
+      { "code": "ISO42001-6", "title": "Planning and Risk Assessment", "description": "AI risk assessment, impact assessment, and objectives." },
+      { "code": "ISO42001-8", "title": "Operation", "description": "Operational planning, AI system lifecycle, and third-party controls." },
+      { "code": "ISO42001-9", "title": "Performance Evaluation", "description": "Monitoring, measurement, internal audit, and management review." }
+    ]
+  },
+  {
+    "code": "EU_AI_ACT",
+    "name": "EU AI Act",
+    "version": "2024/1689",
+    "description": "European Union Regulation laying down harmonised rules on artificial intelligence.",
+    "requirements": [
+      { "code": "EU-ART9", "title": "Risk Management System", "description": "Continuous iterative risk management throughout lifecycle." },
+      { "code": "EU-ART14", "title": "Human Oversight", "description": "Effective human oversight measures and intervention capability." },
+      { "code": "EU-ART15", "title": "Accuracy, Robustness and Cybersecurity", "description": "Resilience against errors, faults, and adversarial attacks." },
+      { "code": "EU-ART73", "title": "Serious Incident Reporting", "description": "Logging and reporting of serious AI incidents." }
+    ]
+  },
+  {
+    "code": "SG_MAS_MGF",
+    "name": "Singapore MAS FEAT & IMDA Model AI Governance Framework",
+    "version": "2024",
+    "description": "Singapore Monetary Authority FEAT principles and IMDA Model AI Governance Framework (including Generative AI).",
+    "requirements": [
+      { "code": "SG-GOV", "title": "Internal Governance Structures", "description": "Clear roles, responsibilities, and board oversight for AI." },
+      { "code": "SG-HUMAN", "title": "Human Involvement in Decision-Making", "description": "Appropriate human-in-the-loop or human-over-the-loop degree." },
+      { "code": "SG-FAIR", "title": "Fairness, Ethics, Accountability, Transparency", "description": "Justifiable, fair, and explainable AI outcomes." },
+      { "code": "SG-OPS", "title": "Operations Management and Incident Readiness", "description": "Monitoring, testing, and incident response for deployed models." }
+    ]
+  }
+]

@@ -1,0 +1,227 @@
+[
+  {
+    "dimension": "FOCUS",
+    "code": "FOC-01",
+    "title": "[PLACEHOLDER] Intended Purpose and Domain Scope",
+    "description": "Clarity of the AI asset's operational domain, target users, and explicit boundary of intended use.",
+    "sortOrder": 1,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No documented domain scope or intended purpose.",
+      "1": "Informal description exists, but scope boundaries are ambiguous.",
+      "2": "Documented purpose and domain scope approved by the asset owner.",
+      "3": "Scope, exclusions, and target user groups are formally documented and reviewed.",
+      "4": "Scope is continuously validated against actual deployment telemetry and business outcomes."
+    }
+  },
+  {
+    "dimension": "FOCUS",
+    "code": "FOC-02",
+    "title": "[PLACEHOLDER] Business Outcome Alignment",
+    "description": "Traceability between the AI capability and a defined enterprise or business unit objective.",
+    "sortOrder": 2,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No stated business objective or value hypothesis.",
+      "1": "General efficiency claim without measurable target.",
+      "2": "Defined business objective linked to business unit priorities.",
+      "3": "Quantified target outcomes agreed with finance and business sponsors.",
+      "4": "Ongoing benefit realisation tracked against strategic KPIs with board visibility."
+    }
+  },
+  {
+    "dimension": "FOCUS",
+    "code": "FOC-03",
+    "title": "[PLACEHOLDER] Data and Jurisdictional Suitability",
+    "description": "Fitness of training, grounding, and operational data for the jurisdictions and sensitivity tiers involved.",
+    "sortOrder": 3,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "Data sources and jurisdictional constraints are unknown.",
+      "1": "Data sensitivity identified informally without formal sign-off.",
+      "2": "Data classification and applicable jurisdictions are documented.",
+      "3": "Data lineage, residency, and privacy controls verified prior to pilot.",
+      "4": "Automated data governance checks and periodic jurisdictional compliance reviews in place."
+    }
+  },
+  {
+    "dimension": "ROLES",
+    "code": "ROL-01",
+    "title": "[PLACEHOLDER] Accountable Executive Owner",
+    "description": "A named individual with business accountability for the asset's outcomes, risk posture, and compliance.",
+    "sortOrder": 4,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No named accountable owner.",
+      "1": "Technical contact exists, but no business accountability assigned.",
+      "2": "Named accountable owner recorded in the AI Asset Register.",
+      "3": "Owner actively reviews risks, metrics, and governance actions on schedule.",
+      "4": "Accountability embedded in executive performance objectives with succession cover."
+    }
+  },
+  {
+    "dimension": "ROLES",
+    "code": "ROL-02",
+    "title": "[PLACEHOLDER] Human Oversight Design",
+    "description": "Named human overseer(s) with capability, context, and authority to intervene in AI outputs.",
+    "sortOrder": 5,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No human oversight role defined.",
+      "1": "Ad-hoc user review without formal training or authority.",
+      "2": "Named overseer assigned with documented intervention procedures.",
+      "3": "Overseer workload, override authority, and escalation SLA tested.",
+      "4": "Continuous oversight effectiveness monitoring with override telemetry."
+    }
+  },
+  {
+    "dimension": "ROLES",
+    "code": "ROL-03",
+    "title": "[PLACEHOLDER] Escalation Path and Governance Liaison",
+    "description": "Clear escalation route for incidents, boundary breaches, and ethical or regulatory concerns.",
+    "sortOrder": 6,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No escalation path documented.",
+      "1": "Generic IT helpdesk path only.",
+      "2": "Defined escalation path to asset owner and Governance Office.",
+      "3": "Time-bound SLAs for incident and risk escalation tested via tabletop exercises.",
+      "4": "Automated alerting integrated with incident response and board reporting."
+    }
+  },
+  {
+    "dimension": "AUTHORITY",
+    "code": "AUT-01",
+    "title": "[PLACEHOLDER] Decision-Rights Matrix Completeness",
+    "description": "Explicit separation of autonomous actions, human-confirmed actions, and out-of-scope actions.",
+    "sortOrder": 7,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No decision-rights boundary defined.",
+      "1": "Informal understanding of what the AI may or may not do.",
+      "2": "Decision-rights matrix documented across all three tiers.",
+      "3": "Matrix version-controlled, signed off by Governance Office, and communicated to operators.",
+      "4": "Matrix enforced technically via guardrails and verified in regular appraisals."
+    }
+  },
+  {
+    "dimension": "AUTHORITY",
+    "code": "AUT-02",
+    "title": "[PLACEHOLDER] Technical Guardrails and Enforcement",
+    "description": "Technical controls preventing the AI asset from executing out-of-scope or unconfirmed actions.",
+    "sortOrder": 8,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No technical guardrails or permission constraints.",
+      "1": "Prompt instructions only, with no programmatic enforcement.",
+      "2": "Role-based API permissions or approval gates implemented for high-risk actions.",
+      "3": "Deterministic policy checks, rate limits, and kill-switch verified in testing.",
+      "4": "Real-time boundary telemetry with automatic suspension on critical breach."
+    }
+  },
+  {
+    "dimension": "AUTHORITY",
+    "code": "AUT-03",
+    "title": "[PLACEHOLDER] Delegation and Authority Review Cadence",
+    "description": "Regular review and re-approval of granted decision rights as the asset or environment evolves.",
+    "sortOrder": 9,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "Authority never reviewed after initial deployment.",
+      "1": "Reviewed only after an incident occurs.",
+      "2": "Annual review of authority rules scheduled.",
+      "3": "Quarterly or lifecycle-gated authority reviews with documented sign-off.",
+      "4": "Dynamic authority adjustment tied directly to AAEF appraisal profile."
+    }
+  },
+  {
+    "dimension": "METRICS",
+    "code": "MET-01",
+    "title": "[PLACEHOLDER] Separation of Activity and Outcome Metrics",
+    "description": "Distinction between usage/volume indicators and genuine business or mission outcomes.",
+    "sortOrder": 10,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No metrics tracked.",
+      "1": "Only activity metrics (queries, active users, token volume) tracked.",
+      "2": "Both activity and outcome metrics defined, though outcome baselines are partial.",
+      "3": "Clear separation enforced; outcome metrics measured with explicit confidence ratings.",
+      "4": "Outcome metrics drive investment, retention, and scaling decisions."
+    }
+  },
+  {
+    "dimension": "METRICS",
+    "code": "MET-02",
+    "title": "[PLACEHOLDER] Quality, Accuracy, and Reliability Telemetry",
+    "description": "Measurement of output accuracy, hallucination or error rates, latency, and drift.",
+    "sortOrder": 11,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No quality or reliability measurement.",
+      "1": "Manual spot-checks performed sporadically.",
+      "2": "Periodic evaluation against a curated test set.",
+      "3": "Continuous automated quality and drift monitoring with alert thresholds.",
+      "4": "Closed-loop quality telemetry linked to risk register and incident triggers."
+    }
+  },
+  {
+    "dimension": "METRICS",
+    "code": "MET-03",
+    "title": "[PLACEHOLDER] Cost and Value Traceability",
+    "description": "Tracking of full TCO (build, licence, compute, governance) alongside realised value.",
+    "sortOrder": 12,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "Costs and benefits are untracked.",
+      "1": "Direct vendor or compute cost tracked only.",
+      "2": "Full cost categories and planned benefits recorded quarterly.",
+      "3": "Actual vs planned benefits tracked with measured vs assumed separation.",
+      "4": "Risk-adjusted ROI and unit economics reviewed by executive committee."
+    }
+  },
+  {
+    "dimension": "EVALUATION",
+    "code": "EVA-01",
+    "title": "[PLACEHOLDER] Performance and Objective Review Cadence",
+    "description": "Structured periodic evaluation of whether the asset continues to meet its intended objectives.",
+    "sortOrder": 13,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No ongoing evaluation conducted.",
+      "1": "Informal end-user feedback only.",
+      "2": "Scheduled periodic review covering performance and adoption.",
+      "3": "Formal multi-stakeholder evaluation with documented findings and actions.",
+      "4": "Continuous evaluation integrated with AAEF appraisals and lifecycle gating."
+    }
+  },
+  {
+    "dimension": "EVALUATION",
+    "code": "EVA-02",
+    "title": "[PLACEHOLDER] Governance and Regulatory Compliance Verification",
+    "description": "Verification against internal policies and external regulatory obligations.",
+    "sortOrder": 14,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "No compliance verification performed.",
+      "1": "Self-attestation without supporting evidence.",
+      "2": "Controls mapped to internal standards with periodic evidence checks.",
+      "3": "Independent control effectiveness testing mapped to external frameworks.",
+      "4": "Audit-ready continuous compliance posture with zero overdue actions."
+    }
+  },
+  {
+    "dimension": "EVALUATION",
+    "code": "EVA-03",
+    "title": "[PLACEHOLDER] Adoption, Change Management, and Decommissioning Readiness",
+    "description": "Assessment of workforce adoption, training effectiveness, and criteria for retirement.",
+    "sortOrder": 15,
+    "isPlaceholder": true,
+    "rubricJson": {
+      "0": "Adoption and exit criteria unconsidered.",
+      "1": "Basic user communications sent at launch.",
+      "2": "Adoption tracked alongside user training and support channels.",
+      "3": "Structured change management and explicit retirement triggers defined.",
+      "4": "Demonstrated workforce capability uplift and proven decommissioning runbook."
+    }
+  }
+]

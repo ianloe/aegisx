@@ -1,0 +1,6 @@
+# Copy to docker-compose.override.yml if you need local host access to PostgreSQL.
+# Do not commit docker-compose.override.yml to version control.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

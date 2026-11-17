@@ -1,0 +1,18 @@
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      - evidence_uploads:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npx tsx prisma/seed.ts && npm run dev"

@@ -1,0 +1,66 @@
+{
+  "configs": [
+    {
+      "key": "RISK_APPETITE",
+      "description": "Residual risk score thresholds (Likelihood x Impact, 1 to 25) triggering appetite breach alerts.",
+      "valueJson": {
+        "maxAcceptableResidualScore": 12,
+        "criticalThreshold": 16,
+        "escalateToBoardScore": 20
+      }
+    },
+    {
+      "key": "FINANCIAL_DEFAULTS",
+      "description": "Default currency (SGD), USD exchange rate, and NPV calculation parameters.",
+      "valueJson": {
+        "defaultCurrency": "SGD",
+        "supportedCurrencies": ["SGD", "USD"],
+        "usdToSgdRate": 1.34,
+        "npvDiscountRate": 0.08,
+        "npvHorizonQuarters": 12
+      }
+    },
+    {
+      "key": "GOVERNANCE_CADENCE",
+      "description": "Cadence thresholds for role reviews and AAEF trajectory delta.",
+      "valueJson": {
+        "roleReviewMaxAgeDays": 180,
+        "trajectoryDeltaThreshold": 0.25
+      }
+    }
+  ],
+  "valueModels": [
+    {
+      "code": "GENERIC",
+      "name": "Generic Enterprise AI ROI Model",
+      "description": "Standard TCO, Net Benefit, ROI %, Payback Period, NPV, Cost per Outcome, and Risk-Adjusted Return.",
+      "isPlaceholder": false,
+      "isActive": true,
+      "configJson": {
+        "discountRate": 0.08,
+        "horizonQuarters": 12,
+        "riskAdjustmentMode": "RESIDUAL_EXPOSURE"
+      }
+    },
+    {
+      "code": "AGENTIC_PNL",
+      "name": "Agentic P&L Framework",
+      "description": "TODO: Supply official Agentic P&L Framework methodology from Ian Loe (Tactics Solutions).",
+      "isPlaceholder": true,
+      "isActive": false,
+      "configJson": {
+        "todo": "Supply Agentic P&L methodology, cost-of-autonomy, and unit economics rules."
+      }
+    },
+    {
+      "code": "CAPABILITY_CAPITALISATION",
+      "name": "Capability Capitalisation Model",
+      "description": "TODO: Supply official Capability Capitalisation methodology from Ian Loe (Tactics Solutions).",
+      "isPlaceholder": true,
+      "isActive": false,
+      "configJson": {
+        "todo": "Supply Capability Capitalisation amortisation and reuse multiplier rules."
+      }
+    }
+  ]
+}
