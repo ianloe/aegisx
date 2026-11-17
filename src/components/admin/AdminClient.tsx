@@ -223,11 +223,10 @@ export function AdminClient({
     }
   }
 
-  async function saveProfile(p: ProfileRow, rawRules: string) {
+  async function saveProfile(p: ProfileRow, ruleConfigJson: Record<string, unknown>) {
     setStatusMsg(null);
     setErrorMsg(null);
     try {
-      const parsedRules = JSON.parse(rawRules);
       const res = await fetch("/api/admin/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -236,16 +235,16 @@ export function AdminClient({
           id: p.id,
           governanceConsequence: p.governanceConsequence,
           requiredAction: p.requiredAction,
-          ruleConfigJson: parsedRules,
+          ruleConfigJson,
           isPlaceholder: p.isPlaceholder,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save profile.");
-      setProfiles((prev) => prev.map((row) => (row.id === p.id ? { ...p, ruleConfigJson: parsedRules } : row)));
+      setProfiles((prev) => prev.map((row) => (row.id === p.id ? { ...p, ruleConfigJson } : row)));
       setStatusMsg(`Saved AAEF profile rule for ${p.name}.`);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Invalid JSON.");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save profile.");
     }
   }
 
@@ -998,6 +997,12 @@ function ConfigCard({
   );
 }
 
+const TRAJECTORY_OPTIONS = [
+  { value: "IMPROVING", label: "Improving" },
+  { value: "STABLE", label: "Stable" },
+  { value: "DEGRADING", label: "Degrading" },
+];
+
 function ProfileRuleCard({
   profile,
   canEdit,
@@ -1007,9 +1012,21 @@ function ProfileRuleCard({
   profile: ProfileRow;
   canEdit: boolean;
   onChange: (p: ProfileRow) => void;
-  onSave: (p: ProfileRow, rawRules: string) => void;
+  onSave: (p: ProfileRow, ruleConfigJson: Record<string, unknown>) => void;
 }) {
-  const [rawRules, setRawRules] = useState(JSON.stringify(profile.ruleConfigJson, null, 2));
+  const [rules, setRules] = useState<Record<string, unknown>>(profile.ruleConfigJson);
+
+  const disallowed = Array.isArray(rules.disallowedTrajectories)
+    ? (rules.disallowedTrajectories as string[])
+    : [];
+
+  function toggleDisallowedTrajectory(traj: string) {
+    const next = disallowed.includes(traj)
+      ? disallowed.filter((t) => t !== traj)
+      : [...disallowed, traj];
+    setRules({ ...rules, disallowedTrajectories: next });
+  }
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -1021,12 +1038,12 @@ function ProfileRuleCard({
           <CardDescription>{profile.description}</CardDescription>
         </div>
         {canEdit && (
-          <Button type="button" size="sm" onClick={() => onSave(profile, rawRules)}>
+          <Button type="button" size="sm" onClick={() => onSave(profile, rules)}>
             Save Rule
           </Button>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div>
           <label className="text-xs font-medium block mb-1">Governance Consequence</label>
           <Input
@@ -1043,14 +1060,84 @@ function ProfileRuleCard({
             onChange={(e) => onChange({ ...profile, requiredAction: e.target.value })}
           />
         </div>
-        <div>
-          <label className="text-xs font-medium block mb-1">Rule Configuration (JSON)</label>
-          <Textarea
-            disabled={!canEdit}
-            className="font-mono text-xs min-h-[120px]"
-            value={rawRules}
-            onChange={(e) => setRawRules(e.target.value)}
-          />
+
+        <div className="rounded-md border border-border bg-surface-muted/30 p-3 space-y-3">
+          <div className="text-xs font-semibold text-foreground">Assignment Thresholds</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Minimum Average Score (0 to 4)</label>
+              <Input
+                type="number"
+                step="0.1"
+                min={0}
+                max={4}
+                disabled={!canEdit}
+                value={Number(rules.minAvgScore ?? 0)}
+                onChange={(e) =>
+                  setRules({ ...rules, minAvgScore: Math.max(0, Math.min(4, Number(e.target.value))) })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Minimum Any-Dimension Score (0 to 4)</label>
+              <Input
+                type="number"
+                step="0.1"
+                min={0}
+                max={4}
+                disabled={!canEdit}
+                value={Number(rules.minDimensionScore ?? 0)}
+                onChange={(e) =>
+                  setRules({ ...rules, minDimensionScore: Math.max(0, Math.min(4, Number(e.target.value))) })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Maximum Open Boundary Breaches</label>
+              <Input
+                type="number"
+                min={0}
+                max={999}
+                disabled={!canEdit}
+                value={Number(rules.maxOpenBreaches ?? 0)}
+                onChange={(e) =>
+                  setRules({ ...rules, maxOpenBreaches: Math.max(0, Number(e.target.value)) })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Boundary Adherence</label>
+              <Select
+                disabled={!canEdit}
+                value={rules.requireBoundaryPassed ? "true" : "false"}
+                onChange={(e) => setRules({ ...rules, requireBoundaryPassed: e.target.value === "true" })}
+              >
+                <option value="true">Must pass (no breach)</option>
+                <option value="false">Allowed even if breached</option>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <span className="text-xs font-medium block mb-1.5">Disallowed Improvement Trajectories</span>
+            <div className="flex flex-wrap gap-3">
+              {TRAJECTORY_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={!canEdit}
+                    checked={disallowed.includes(opt.value)}
+                    onChange={() => toggleDisallowedTrajectory(opt.value)}
+                    className="rounded border-border"
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              An agent with a checked trajectory cannot be assigned this profile.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
