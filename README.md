@@ -1,4 +1,8 @@
-# AI Governance Command Centre
+<p align="center">
+  <img src="public/aegis-logo.png" alt="Aegis AI Governance Platform" width="380" />
+</p>
+
+# Aegis: AI Governance Platform
 
 An evidence-based enterprise AI governance and agent appraisal web application operationalising **FRAME** and **AAEF** (by Ian Loe, Tactics Solutions, licensed under Creative Commons BY-NC 4.0).
 
