@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Governance Command Centre",
-  description: "Enterprise AI governance, risk, and agent evaluation platform operationalising FRAME and AAEF.",
+  title: "Aegis | AI Governance Platform",
+  description: "Aegis AI Governance Platform operationalising FRAME and AAEF for enterprise AI and autonomous agents.",
+  icons: {
+    icon: "/aegis-logo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

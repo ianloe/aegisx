@@ -77,14 +77,17 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-surface shrink-0">
-        <div className="h-14 flex items-center gap-2.5 px-4 border-b border-border">
-          <div className="h-7 w-7 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs">
-            AG
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold tracking-tight">AI Governance</div>
-            <div className="text-[11px] text-muted-foreground">Command Centre</div>
-          </div>
+        <div className="h-16 flex items-center px-3 border-b border-border">
+          <Link
+            href="/"
+            className="w-full rounded-md bg-black px-3 py-1.5 flex items-center justify-center border border-slate-800/80"
+          >
+            <img
+              src="/aegis-logo.png"
+              alt="Aegis AI Governance Platform"
+              className="h-9 w-auto object-contain"
+            />
+          </Link>
         </div>
 
         <nav aria-label="Primary navigation" className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -119,8 +122,14 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="relative w-64 bg-surface border-r border-border flex flex-col z-10">
-            <div className="h-14 flex items-center justify-between px-4 border-b border-border">
-              <span className="text-sm font-semibold">AI Governance</span>
+            <div className="h-16 flex items-center justify-between gap-2 px-3 border-b border-border">
+              <div className="rounded-md bg-black px-2.5 py-1 flex items-center">
+                <img
+                  src="/aegis-logo.png"
+                  alt="Aegis AI Governance Platform"
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
               <button
                 type="button"
                 aria-label="Close navigation menu"
@@ -198,7 +207,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">{children}</main>
 
         <footer className="border-t border-border bg-surface px-4 lg:px-6 py-3 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
-          <span>AI Governance Command Centre</span>
+          <span>Aegis: AI Governance Platform</span>
           <span>FRAME and AAEF by Ian Loe, Tactics Solutions, licensed CC BY-NC 4.0.</span>
         </footer>
       </div>

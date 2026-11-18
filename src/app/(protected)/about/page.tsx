@@ -21,7 +21,7 @@ export default function AboutPage() {
             <strong>FRAME and AAEF by Ian Loe, Tactics Solutions, licensed CC BY-NC 4.0.</strong>
           </p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            AI Governance Command Centre operationalises FRAME as the enterprise governance envelope and AAEF as the
+            Aegis (AI Governance Platform) operationalises FRAME as the enterprise governance envelope and AAEF as the
             agent-level evaluation discipline inside that envelope. Every metric, score, profile assignment, and return
             figure is designed to remain traceable to its underlying source evidence.
           </p>

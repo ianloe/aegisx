@@ -40,13 +40,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-1">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm mb-2">
-            AG
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 shadow-sm border border-slate-800">
+            <img
+              src="/aegis-logo.png"
+              alt="Aegis AI Governance Platform"
+              className="h-14 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            AI Governance Command Centre
-          </h1>
+          <h1 className="sr-only">Aegis: AI Governance Platform</h1>
           <p className="text-sm text-muted-foreground">
             Evidence-based governance for enterprise AI and autonomous agents.
           </p>
