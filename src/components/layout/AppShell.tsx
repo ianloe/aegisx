@@ -80,7 +80,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
         <div className="h-16 flex items-center px-3 border-b border-border">
           <Link
             href="/"
-            className="w-full rounded-md bg-black px-3 py-1.5 flex items-center justify-center border border-slate-800/80"
+            className="w-full rounded-md bg-white px-3 py-1.5 flex items-center justify-center border border-border/60"
           >
             <img
               src="/aegis-logo.png"
@@ -123,7 +123,7 @@ export function AppShell({ user, children }: { user: ShellUser; children: React.
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="relative w-64 bg-surface border-r border-border flex flex-col z-10">
             <div className="h-16 flex items-center justify-between gap-2 px-3 border-b border-border">
-              <div className="rounded-md bg-black px-2.5 py-1 flex items-center">
+              <div className="rounded-md bg-white px-2.5 py-1 flex items-center border border-border/60">
                 <img
                   src="/aegis-logo.png"
                   alt="Aegis AI Governance Platform"

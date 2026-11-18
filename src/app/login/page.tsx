@@ -41,7 +41,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 shadow-sm border border-slate-800">
+          <div className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 shadow-sm border border-border">
             <img
               src="/aegis-logo.png"
               alt="Aegis AI Governance Platform"
