@@ -10,6 +10,7 @@ import { buildRiskHeatmapMatrix, evaluateRiskPosture } from "../governance/risk-
 import { calculateGenericRoi, convertCurrency } from "../governance/roi-engine";
 import { parseCsv, toCsv } from "../csv";
 import { generateBoardPackPdfBuffer } from "../pdf/board-pack-pdf";
+import { evaluateStageGateReadiness } from "../governance/stage-gates";
 
 const SAMPLE_PROFILES: ProfileDefinition[] = [
   {
@@ -314,5 +315,45 @@ describe("CSV Import/Export & A4 PDF Board Pack Generator", () => {
     expect(str.startsWith("%PDF-1.4")).toBe(true);
     expect(str).toContain("/MediaBox [0 0 595.28 841.89]");
     expect(str).toContain("FRAME and AAEF by Ian Loe, Tactics Solutions, licensed CC BY-NC 4.0.");
+  });
+});
+
+describe("Lifecycle Stage-Gate Readiness", () => {
+  it("passes when all FRAME, Risk, and AAEF criteria are satisfied", () => {
+    const res = evaluateStageGateReadiness({
+      targetLifecycleStage: "PRODUCTION",
+      targetAutonomyLevel: "AUTONOMOUS",
+      isAgent: true,
+      hasOwner: true,
+      hasOverseer: true,
+      rolesLapsed: false,
+      authorityRuleCount: 3,
+      latestFrameAvg: 3.1,
+      highRiskBreachCount: 0,
+      latestAaefProfileCode: "OPERATIONAL",
+      openBreachCount: 0,
+    });
+    expect(res.passed).toBe(true);
+    expect(res.checks.every((c) => c.passed)).toBe(true);
+  });
+
+  it("fails when an autonomous agent has open boundary breaches or lapsed roles", () => {
+    const res = evaluateStageGateReadiness({
+      targetLifecycleStage: "PRODUCTION",
+      targetAutonomyLevel: "AUTONOMOUS",
+      isAgent: true,
+      hasOwner: true,
+      hasOverseer: true,
+      rolesLapsed: true,
+      authorityRuleCount: 2,
+      latestFrameAvg: 2.8,
+      highRiskBreachCount: 1,
+      latestAaefProfileCode: "RESTRICTED",
+      openBreachCount: 1,
+    });
+    expect(res.passed).toBe(false);
+    expect(res.checks.find((c) => c.key === "ROLES")?.passed).toBe(false);
+    expect(res.checks.find((c) => c.key === "RISK_APPETITE")?.passed).toBe(false);
+    expect(res.checks.find((c) => c.key === "AAEF_PROFILE")?.passed).toBe(false);
   });
 });

@@ -256,6 +256,10 @@ model User {
   evidenceUploaded   Evidence[]
   actionsOwned       Action[]
   auditLogs          AuditLogEntry[]
+  gateRequestsMade   StageGateRequest[] @relation("GateRequester")
+  gateReviewsMade    StageGateRequest[] @relation("GateReviewer")
+  vendorReviews      VendorAssessment[]
+  telemetryApiKeys   TelemetryApiKey[]
 }
 
 model AIAsset {
@@ -291,6 +295,8 @@ model AIAsset {
   costItems           CostItem[]
   benefitItems        BenefitItem[]
   actions             Action[]
+  stageGateRequests   StageGateRequest[]
+  vendorAssessment    VendorAssessment?
 }
 
 model FrameCriterion {
@@ -630,4 +636,106 @@ model AuditLogEntry {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+enum StageGateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VendorReviewStatus {
+  PENDING
+  APPROVED
+  CONDITIONAL
+  REJECTED
+}
+
+enum AlertChannel {
+  IN_APP
+  WEBHOOK
+}
+
+model StageGateRequest {
+  id                     String          @id @default(cuid())
+  assetId                String
+  asset                  AIAsset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  requestedById          String
+  requestedBy            User            @relation("GateRequester", fields: [requestedById], references: [id])
+  reviewedById           String?
+  reviewedBy             User?           @relation("GateReviewer", fields: [reviewedById], references: [id])
+  currentLifecycleStage  LifecycleStage
+  targetLifecycleStage   LifecycleStage
+  currentAutonomyLevel   AutonomyLevel
+  targetAutonomyLevel    AutonomyLevel
+  status                 StageGateStatus @default(PENDING)
+  readinessPassed        Boolean         @default(false)
+  readinessSnapshotJson  Json
+  justification          String?
+  decisionNotes          String?
+  reviewedAt             DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([assetId, status])
+}
+
+model VendorAssessment {
+  id                  String             @id @default(cuid())
+  assetId             String             @unique
+  asset               AIAsset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  vendorName          String
+  modelName           String?
+  modelCardUrl        String?
+  dataResidency       String
+  zeroDataRetention   Boolean            @default(false)
+  subProcessors       String?
+  contractRenewalDate DateTime?
+  exitPlanSummary     String?
+  status              VendorReviewStatus @default(PENDING)
+  notes               String?
+  reviewerId          String?
+  reviewer            User?              @relation(fields: [reviewerId], references: [id])
+  lastReviewedAt      DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model TelemetryApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyPrefix   String
+  keyHash     String    @unique
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model AlertRule {
+  id          String       @id @default(cuid())
+  eventType   String       @unique
+  label       String
+  description String
+  isEnabled   Boolean      @default(true)
+  channel     AlertChannel @default(IN_APP)
+  webhookUrl  String?
+  updatedAt   DateTime     @updatedAt
+}
+
+model AlertDelivery {
+  id         String       @id @default(cuid())
+  eventType  String
+  title      String
+  message    String
+  severity   String       @default("INFO")
+  entityType String?
+  entityId   String?
+  channel    AlertChannel @default(IN_APP)
+  delivered  Boolean      @default(true)
+  isRead     Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+
+  @@index([isRead, createdAt])
 }

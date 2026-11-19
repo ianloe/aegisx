@@ -170,6 +170,42 @@ async function seedReferenceConfig() {
     });
     console.log(`[seed] Created initial admin user: ${adminEmail}`);
   }
+
+  const defaultAlertRules = [
+    {
+      eventType: "AAEF_PROFILE_DOWNGRADE",
+      label: "AAEF Profile Downgrade",
+      description: "Trigger when an AI agent is assigned Restricted or Under Review, or logs a boundary breach.",
+    },
+    {
+      eventType: "RISK_APPETITE_BREACH",
+      label: "Risk Appetite Breach",
+      description: "Trigger when a residual risk score exceeds the configured Risk Appetite threshold.",
+    },
+    {
+      eventType: "APPRAISAL_OVERDUE",
+      label: "Overdue AAEF Appraisal",
+      description: "Trigger when a scheduled 30-day, 90-day, or periodic agent appraisal is overdue.",
+    },
+    {
+      eventType: "STAGE_GATE_PENDING",
+      label: "Stage-Gate Approval Requested",
+      description: "Trigger when an Asset Owner requests promotion to Pilot, Production, or Autonomous.",
+    },
+    {
+      eventType: "ACTION_OVERDUE",
+      label: "Overdue Governance Action",
+      description: "Trigger when a remediation action passes its due date without closure.",
+    },
+  ];
+
+  for (const r of defaultAlertRules) {
+    await prisma.alertRule.upsert({
+      where: { eventType: r.eventType },
+      update: {},
+      create: r,
+    });
+  }
 }
 
 async function seedDemoData() {
@@ -643,6 +679,52 @@ async function seedDemoData() {
       uploadedById: assessorId,
     },
   });
+
+  // Seed vendor due diligence for vendor/hybrid demo assets
+  const vendorAssets = createdAssets.filter((a) => a.sourcingType !== "IN_HOUSE");
+  for (const va of vendorAssets) {
+    await prisma.vendorAssessment.upsert({
+      where: { assetId: va.id },
+      update: {},
+      create: {
+        assetId: va.id,
+        vendorName: va.vendorName || "External AI Vendor",
+        modelName: "Enterprise Managed Model",
+        dataResidency: va.country === "Singapore" ? "Singapore (ap-southeast-1)" : "United Kingdom (eu-west-2)",
+        zeroDataRetention: va.dataSensitivity !== "CONFIDENTIAL",
+        subProcessors: "Primary Cloud Hosting Provider, Observability Telemetry",
+        contractRenewalDate: new Date("2027-06-30"),
+        exitPlanSummary: "Model-agnostic prompt/RAG layer enables migration within 30 days.",
+        status: va.dataSensitivity === "CONFIDENTIAL" ? "CONDITIONAL" : "APPROVED",
+        reviewerId: govId,
+        lastReviewedAt: new Date("2026-10-15"),
+      },
+    });
+  }
+
+  // Seed a sample pending Stage-Gate promotion request
+  if (createdAssets[1]) {
+    await prisma.stageGateRequest.create({
+      data: {
+        assetId: createdAssets[1].id,
+        requestedById: ownerSgId,
+        currentLifecycleStage: createdAssets[1].lifecycleStage,
+        targetLifecycleStage: "PRODUCTION",
+        currentAutonomyLevel: createdAssets[1].autonomyLevel,
+        targetAutonomyLevel: createdAssets[1].autonomyLevel,
+        status: "PENDING",
+        readinessPassed: true,
+        readinessSnapshotJson: {
+          checks: [
+            { label: "Named Accountable Owner & Overseer", passed: true },
+            { label: "Authority Matrix Defined", passed: true },
+            { label: "No Critical Risks Above Appetite", passed: true },
+          ],
+        },
+        justification: "Completed 60-day pilot with zero boundary breaches and verified outcome metrics.",
+      },
+    });
+  }
 
   await prisma.auditLogEntry.create({
     data: {

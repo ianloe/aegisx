@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { RoleCode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requirePageSession } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/rbac";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatEnumLabel } from "@/lib/utils";
+import { AssetGatePanel } from "@/components/assets/AssetGatePanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await requirePageSession();
+  const role = session.role as RoleCode;
 
   const asset = await prisma.aIAsset.findUnique({
     where: { id },
@@ -33,6 +39,13 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
       costItems: true,
       benefitItems: true,
       actions: { orderBy: { dueDate: "asc" } },
+      stageGateRequests: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          requestedBy: { select: { name: true } },
+          reviewedBy: { select: { name: true } },
+        },
+      },
     },
   });
 
@@ -318,6 +331,19 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
       </div>
+
+      <AssetGatePanel
+        assetId={asset.id}
+        currentLifecycleStage={asset.lifecycleStage}
+        currentAutonomyLevel={asset.autonomyLevel}
+        initialRequests={asset.stageGateRequests.map((g) => ({
+          ...g,
+          createdAt: g.createdAt.toISOString(),
+          readinessSnapshotJson: g.readinessSnapshotJson as { checks?: Array<{ label: string; passed: boolean; detail?: string }> },
+        }))}
+        canRequest={hasPermission(role, "assets:write")}
+        canApprove={hasPermission(role, "aaef:signoff")}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ssoInfo, setSsoInfo] = useState<{ enabled: boolean; providerName: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/sso")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.enabled) setSsoInfo(data);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,6 +112,14 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
+
+              {ssoInfo?.enabled && (
+                <a href="/api/auth/sso?action=login" className="block">
+                  <Button type="button" variant="outline" className="w-full">
+                    Sign in with {ssoInfo.providerName}
+                  </Button>
+                </a>
+              )}
             </form>
           </CardContent>
         </Card>
