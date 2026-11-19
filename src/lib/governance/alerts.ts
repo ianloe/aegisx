@@ -42,6 +42,21 @@ export async function dispatchAlert(
     } catch {
       delivered = false;
     }
+  } else if (channel === "TELEGRAM" && rule?.webhookUrl && rule?.telegramChatId) {
+    try {
+      const botToken = rule.webhookUrl.trim();
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: rule.telegramChatId.trim(),
+          text: `[Aegis ${input.severity ?? "INFO"}] ${input.title}\n\n${input.message}`,
+        }),
+      });
+      delivered = res.ok;
+    } catch {
+      delivered = false;
+    }
   }
 
   return client.alertDelivery.create({

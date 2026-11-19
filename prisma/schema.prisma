@@ -654,6 +654,7 @@ enum VendorReviewStatus {
 enum AlertChannel {
   IN_APP
   WEBHOOK
+  TELEGRAM
 }
 
 model StageGateRequest {
@@ -714,14 +715,15 @@ model TelemetryApiKey {
 }
 
 model AlertRule {
-  id          String       @id @default(cuid())
-  eventType   String       @unique
-  label       String
-  description String
-  isEnabled   Boolean      @default(true)
-  channel     AlertChannel @default(IN_APP)
-  webhookUrl  String?
-  updatedAt   DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  eventType      String       @unique
+  label          String
+  description    String
+  isEnabled      Boolean      @default(true)
+  channel        AlertChannel @default(IN_APP)
+  webhookUrl     String?
+  telegramChatId String?
+  updatedAt      DateTime     @updatedAt
 }
 
 model AlertDelivery {

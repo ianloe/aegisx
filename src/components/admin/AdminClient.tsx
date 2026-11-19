@@ -66,8 +66,9 @@ interface AlertRuleRow {
   label: string;
   description: string;
   isEnabled: boolean;
-  channel: "IN_APP" | "WEBHOOK";
+  channel: "IN_APP" | "WEBHOOK" | "TELEGRAM";
   webhookUrl: string | null;
+  telegramChatId: string | null;
 }
 
 interface TelemetryKeyRow {
@@ -885,7 +886,9 @@ export function AdminClient({
                       onChange={(e) =>
                         setAlertRules((prev) =>
                           prev.map((r) =>
-                            r.id === rule.id ? { ...r, channel: e.target.value as "IN_APP" | "WEBHOOK" } : r,
+                            r.id === rule.id
+                              ? { ...r, channel: e.target.value as "IN_APP" | "WEBHOOK" | "TELEGRAM" }
+                              : r,
                           ),
                         )
                       }
@@ -893,20 +896,49 @@ export function AdminClient({
                     >
                       <option value="IN_APP">In-App Bell</option>
                       <option value="WEBHOOK">Webhook (Slack / Teams)</option>
+                      <option value="TELEGRAM">Telegram Bot</option>
                     </Select>
                   </div>
                   <div className="lg:col-span-3">
-                    <Input
-                      disabled={!canEdit || rule.channel !== "WEBHOOK"}
-                      placeholder="https://hooks.slack.com/..."
-                      value={rule.webhookUrl || ""}
-                      onChange={(e) =>
-                        setAlertRules((prev) =>
-                          prev.map((r) => (r.id === rule.id ? { ...r, webhookUrl: e.target.value } : r)),
-                        )
-                      }
-                      className="h-8 text-xs"
-                    />
+                    {rule.channel === "TELEGRAM" ? (
+                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                        <Input
+                          disabled={!canEdit}
+                          type="password"
+                          placeholder="Bot Token (123456:ABC...)"
+                          value={rule.webhookUrl || ""}
+                          onChange={(e) =>
+                            setAlertRules((prev) =>
+                              prev.map((r) => (r.id === rule.id ? { ...r, webhookUrl: e.target.value } : r)),
+                            )
+                          }
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          disabled={!canEdit}
+                          placeholder="Chat ID (e.g. -100123...)"
+                          value={rule.telegramChatId || ""}
+                          onChange={(e) =>
+                            setAlertRules((prev) =>
+                              prev.map((r) => (r.id === rule.id ? { ...r, telegramChatId: e.target.value } : r)),
+                            )
+                          }
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <Input
+                        disabled={!canEdit || rule.channel !== "WEBHOOK"}
+                        placeholder="https://hooks.slack.com/..."
+                        value={rule.webhookUrl || ""}
+                        onChange={(e) =>
+                          setAlertRules((prev) =>
+                            prev.map((r) => (r.id === rule.id ? { ...r, webhookUrl: e.target.value } : r)),
+                          )
+                        }
+                        className="h-8 text-xs"
+                      />
+                    )}
                   </div>
                   <div className="lg:col-span-1 flex justify-end">
                     {canEdit && (
@@ -926,6 +958,7 @@ export function AdminClient({
                               isEnabled: rule.isEnabled,
                               channel: rule.channel,
                               webhookUrl: rule.webhookUrl || null,
+                              telegramChatId: rule.telegramChatId || null,
                             }),
                           });
                           if (res.ok) setStatusMsg(`Saved alert rule "${rule.label}".`);

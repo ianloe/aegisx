@@ -26,6 +26,7 @@ const patchAlertSchema = z.discriminatedUnion("action", [
     isEnabled: z.boolean(),
     channel: z.nativeEnum(AlertChannel),
     webhookUrl: z.string().nullable().optional(),
+    telegramChatId: z.string().nullable().optional(),
   }),
   z.object({
     action: z.literal("MARK_READ"),
@@ -66,6 +67,7 @@ export async function PATCH(request: Request) {
         isEnabled: ruleData.isEnabled,
         channel: ruleData.channel,
         webhookUrl: ruleData.webhookUrl || null,
+        telegramChatId: ruleData.telegramChatId || null,
       },
     });
     await writeAuditLog(tx, {
