@@ -24,6 +24,7 @@ import {
   Building2,
   Bell,
   KeyRound,
+  BookOpen,
 } from "lucide-react";
 import { cn, formatEnumLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ const NAV_ITEMS = [
   { href: "/audit", label: "Audit Log", icon: History, roles: ["ADMIN", "GOVERNANCE_OFFICE", "AUDITOR"] },
   { href: "/integrations", label: "API & Integrations", icon: KeyRound, roles: ["ADMIN", "GOVERNANCE_OFFICE"] },
   { href: "/admin", label: "Admin Config", icon: Settings, roles: ["ADMIN", "GOVERNANCE_OFFICE"] },
+  { href: "/manual", label: "User Manual", icon: BookOpen },
   { href: "/about", label: "About & Frameworks", icon: Info },
 ];
 

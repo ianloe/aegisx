@@ -8,6 +8,7 @@ An evidence-based enterprise AI governance and agent appraisal web application o
 
 - **FRAME** provides the enterprise governance envelope across five dimensions: **Focus**, **Roles**, **Authority**, **Metrics**, and **Evaluation**.
 - **AAEF (AI Agent Evaluation Framework)** evaluates AI agents inside that envelope across **Task Competence**, **Judgement Quality**, **Boundary Adherence** (binary), **Collaboration Effectiveness**, and **Improvement Trajectory**, assigning one of four performance profiles: **Operational**, **Developing**, **Restricted**, or **Under Review**.
+- **User Manual**: Available in-app at `/manual` and in [docs/USER_MANUAL.md](docs/USER_MANUAL.md).
 
 ---
 
