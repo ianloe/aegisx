@@ -12,6 +12,17 @@ An evidence-based enterprise AI governance and agent appraisal web application o
 
 ---
 
+## Key Capabilities & Integrations
+
+- **API Telemetry & Runtime Ingestion (`/integrations`, `POST /api/telemetry/ingest`)**: Issue scoped Bearer API keys (`agx_live_...`) for production AI agents and orchestration pipelines to stream live execution telemetry (invocation counts, latency, token usage, cost, and boundary breach signals). Breaches automatically log governance incidents and trigger alert rules.
+- **Messaging & Alert Integrations (`/integrations`, `/admin`)**: Configure event-driven governance alerts across **In-App Bell**, **Webhook (Slack / Microsoft Teams)**, and **Telegram Bot** (`sendMessage` via Bot Token and Chat ID) for events such as AAEF profile downgrades, boundary breaches, risk appetite breaches, and overdue appraisals.
+- **FRAME & AAEF Operationalisation**: Conduct structured FRAME maturity assessments (0 to 4 rubrics), run AAEF appraisal cycles with dynamic profile assignment, and enforce lifecycle stage-gate readiness checks.
+- **Risk Register, Incidents & Regulatory Crosswalks**: Track 5x5 risk postures against configurable risk appetite thresholds and map controls to **IMDA Model AI Governance Framework**, **ISO/IEC 42001**, **NIST AI RMF**, and **EU AI Act**.
+- **Value, ROI & Board Reporting**: Separate Measured, Estimated, and Assumed benefits with SGD/USD currency conversion, Risk-Adjusted ROI, Value-at-Risk, CSV import/export, and one-click A4 PDF Board Pack generation.
+- **Enterprise Readiness**: Role-based access control (6 governance roles), immutable audit logging (`/audit-log`), OIDC/SSO readiness, and a built-in interactive User Manual (`/manual`).
+
+---
+
 ## 1. Quick Start (Single Command with Docker Compose)
 
 No local Node.js or PostgreSQL installation is required.
