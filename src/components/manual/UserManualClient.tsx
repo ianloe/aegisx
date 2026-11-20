@@ -195,8 +195,37 @@ const SECTIONS: ManualSection[] = [
     steps: [
       "In Admin Config (/admin), use Parameters & Appetite to adjust Risk Appetite thresholds, SGD/USD rate, NPV discount rate, and cadence thresholds without touching JSON or code.",
       "Use Business Units to add, edit, or safely remove organisational units, and Users & Roles to add Administrators, Editors, or Viewers.",
-      "In API & Integrations (/integrations), generate Bearer tokens for POST /api/telemetry/ingest to stream live Boundary Breaches and Measured ROI costs from production agents.",
-      "Configure In-App Bell or Slack/Teams Webhooks for automated alerts, run an on-demand Governance Digest, and review Enterprise SSO (OIDC) status.",
+      "In API & Integrations (/integrations), generate Bearer tokens for POST /api/telemetry/ingest (Boundary Breaches, Measured ROI, and GUARDRAIL_EVENT), POST /api/telemetry/pydantic (PydanticAI & Pydantic Logfire OTLP), and POST /api/telemetry/mcp-a2a.",
+      "Configure In-App Bell, Slack/Teams Webhooks, or Telegram Bot (Bot Token + Chat ID) for automated alerts, run an on-demand Governance Digest, and review Enterprise SSO (OIDC) status.",
+    ],
+  },
+  {
+    id: "shadow-ai",
+    number: "13",
+    title: "Shadow AI Discovery & Visibility",
+    audience: "Governance Office, Security, Administrators",
+    route: "/shadow-ai",
+    summary:
+      "Captures unregistered AI services from SASE/SWG traffic, DNS resolver logs, IdP/OAuth grants, Cloud, and Expense feeds so Governance Officers can promote or block them.",
+    steps: [
+      "Forward aggregated SASE, DNS, IdP, Cloud, or Expense events to POST /api/discovery/ingest using a Bearer telemetry API key.",
+      "Aegis matches domains against its built-in AI provider catalogue, accumulates request counts and uploaded bytes, and triggers SHADOW_AI_DETECTED alerts.",
+      "In Shadow AI (/shadow-ai), filter candidates by source or status and click Promote to onboard an approved service directly into the AI Asset Register (Idea stage), or Block / Dismiss it.",
+    ],
+  },
+  {
+    id: "assurance-suite",
+    number: "14",
+    title: "Assurance, Kill-Switch, AI-BOM & MCP/A2A",
+    audience: "Governance Office, Assessors, Asset Owners, Administrators",
+    route: "/assurance",
+    summary:
+      "Centralises runtime circuit-breakers, AI Bill of Materials (AI-BOM), MCP & A2A delegation policies, RAG data lineage, red-team evals, policy exceptions, AUP attestations, statutory incident timers, and FinOps budget caps.",
+    steps: [
+      "Kill-Switch & AI-BOM: Toggle an asset's runtime gate (ALLOW, RESTRICTED, SUSPENDED) or let production orchestrators poll GET /api/assets/[id]/gate; CRITICAL telemetry breaches auto-suspend the gate. Register approved models, prompts, MCP servers, tools, and guardrails in the AI-BOM.",
+      "MCP & A2A Graph: Define allowed MCP server tools/HITL rules and A2A peer trust links (permitted skills and max hop depth). Stream runtime calls to POST /api/telemetry/mcp-a2a; unapproved calls automatically log Boundary Breaches and fire UNAPPROVED_MCP_OR_A2A alerts.",
+      "Data Lineage & Evals: Link RAG/training data sources with PII/sensitivity tags and record pre-deployment Red-Team, Hallucination, Bias, and Prompt-Injection evaluation scorecards.",
+      "Exceptions, AUP, Timers & FinOps: Issue time-bound policy waivers with compensating controls, log staff AUP/training attestations, attach PDPC 72h / EU AI Act / MAS TRM notification timers to incidents, and set quarterly FinOps spend caps (BUDGET_ALERT at 80% and 100%).",
     ],
   },
 ];

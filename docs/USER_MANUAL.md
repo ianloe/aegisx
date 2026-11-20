@@ -95,5 +95,28 @@ Aegis organises all governance around a central **AI Asset Register**, using **F
 ## 11. Administration & API Integrations (`/admin` & `/integrations`)
 
 - **Admin Config (`/admin`)**: Form-based editing for Parameters & Appetite, Business Units CRUD, FRAME Criteria & Rubrics, AAEF Profile Rules, and Users & Roles.
-- **API & Integrations (`/integrations`)**: Generate/revoke Bearer tokens for `POST /api/telemetry/ingest` (`BOUNDARY_BREACH` and `ROI_METRIC`), configure Slack/Teams alert webhooks, run on-demand Governance Digests, and verify Enterprise SSO (OIDC) status.
+- **API & Integrations (`/integrations`)**:
+  - Generate/revoke Bearer tokens (`agx_live_...`) for:
+    - `POST /api/telemetry/ingest`: `BOUNDARY_BREACH`, `ROI_METRIC`, and `GUARDRAIL_EVENT` blocks (prompt injection, PII leaks, toxicity).
+    - `POST /api/telemetry/pydantic`: Native **PydanticAI** run payloads and **Pydantic Logfire OTLP** (`resourceSpans`) telemetry.
+    - `POST /api/telemetry/mcp-a2a`: Runtime MCP tool invocations and A2A peer delegations.
+  - Configure **In-App Bell**, **Slack/Teams Webhooks**, or **Telegram Bot** (Bot Token + Chat ID) for automated alerts, run on-demand Governance Digests, and verify Enterprise SSO (OIDC) status.
 - **In-App Manual (`/manual`)**: Searchable and printable user manual built directly into the Aegis sidebar.
+
+---
+
+## 12. Shadow AI Discovery & Visibility (`/shadow-ai`)
+
+- **Network & Identity Feeds (`POST /api/discovery/ingest`)**: Stream aggregated SASE/SWG, DNS resolver, IdP/OAuth, Cloud, or Expense events to detect unregistered AI usage.
+- **Catalogue Matching & Alerts**: Automatically identifies 35+ AI providers, tracks request counts and uploaded bytes, and fires `SHADOW_AI_DETECTED` alerts.
+- **Triage**: Review candidates in `/shadow-ai` and **Promote** them directly into the AI Asset Register (`IDEA` stage), **Block**, or **Dismiss** them.
+
+---
+
+## 13. Assurance, Kill-Switch, AI-BOM & MCP/A2A (`/assurance`)
+
+- **Runtime Kill-Switch (`GET / PATCH /api/assets/[id]/gate`)**: Production orchestrators poll the gate status (`ALLOW`, `RESTRICTED`, `SUSPENDED`) before executing autonomous actions. `CRITICAL` telemetry breaches auto-suspend the gate.
+- **AI Bill of Materials (AI-BOM)**: Register approved foundation models, system prompts, MCP servers, tools/APIs, and guardrails per asset.
+- **MCP & A2A Trust Graph**: Define allowed MCP server tools/HITL rules and A2A peer trust links (permitted skills and max hop depth). Unapproved calls streamed to `POST /api/telemetry/mcp-a2a` automatically log Boundary Breaches and fire `UNAPPROVED_MCP_OR_A2A` alerts.
+- **RAG Data Lineage & Red-Team Evals**: Map data repositories with PII/sensitivity tags and record Red-Team, Prompt-Injection, Hallucination, and Bias evaluation scorecards.
+- **Exceptions, AUP, Statutory Timers & FinOps**: Grant time-bound policy waivers, log staff AUP/training attestations, attach PDPC 72h / EU AI Act / MAS TRM notification countdowns to incidents, and set quarterly FinOps spend caps (`BUDGET_ALERT` at 80% and 100%).
