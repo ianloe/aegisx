@@ -26,6 +26,7 @@ import {
   KeyRound,
   BookOpen,
   Radar,
+  Lock,
 } from "lucide-react";
 import { cn, formatEnumLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { href: "/frame", label: "FRAME Governance", icon: ShieldCheck },
   { href: "/aaef", label: "AAEF Appraisals", icon: Bot },
   { href: "/risks", label: "Risk & Controls", icon: AlertTriangle },
+  { href: "/assurance", label: "Assurance & AI-BOM", icon: Lock },
   { href: "/compliance", label: "Regulatory Readiness", icon: Scale },
   { href: "/vendors", label: "Vendor Due Diligence", icon: Building2 },
   { href: "/roi", label: "ROI & Value", icon: TrendingUp },

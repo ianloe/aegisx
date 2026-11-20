@@ -6,7 +6,7 @@ import { DEFAULT_FINANCIAL_CONFIG, FinancialConfig } from "@/lib/governance/roi-
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHomePage() {
-  const [assets, businessUnits, appetiteCfg, finCfg] = await Promise.all([
+  const [assets, businessUnits, appetiteCfg, finCfg, shadowCandidates] = await Promise.all([
     prisma.aIAsset.findMany({
       include: {
         businessUnit: { select: { id: true, code: true, name: true } },
@@ -70,7 +70,15 @@ export default async function DashboardHomePage() {
     prisma.businessUnit.findMany({ orderBy: { name: "asc" } }),
     prisma.governanceConfig.findUnique({ where: { key: "RISK_APPETITE" } }),
     prisma.governanceConfig.findUnique({ where: { key: "FINANCIAL_DEFAULTS" } }),
+    prisma.shadowAiCandidate.findMany({
+      select: { status: true, requestCount: true },
+    }),
   ]);
+
+  const shadowSummary = {
+    openCount: shadowCandidates.filter((s) => s.status === "DETECTED" || s.status === "UNDER_REVIEW").length,
+    totalRequests: shadowCandidates.reduce((sum, s) => sum + s.requestCount, 0),
+  };
 
   const appetite: RiskAppetiteThresholds = {
     ...DEFAULT_RISK_APPETITE,
@@ -96,6 +104,7 @@ export default async function DashboardHomePage() {
       businessUnits={businessUnits}
       appetite={appetite}
       financialConfig={financialConfig}
+      shadowSummary={shadowSummary}
     />
   );
 }

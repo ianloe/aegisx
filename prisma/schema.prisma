@@ -281,10 +281,14 @@ model AIAsset {
   autonomyLevel       AutonomyLevel    @default(ASSISTIVE)
   dataSensitivity     DataSensitivity  @default(INTERNAL)
   jurisdictions       String[]
-  sourcingType        SourcingType     @default(IN_HOUSE)
-  vendorName          String?
-  isAgent             Boolean          @default(false)
-  createdAt           DateTime         @default(now())
+  sourcingType            SourcingType      @default(IN_HOUSE)
+  vendorName              String?
+  isAgent                 Boolean           @default(false)
+  runtimeGateStatus       RuntimeGateStatus @default(ALLOW)
+  runtimeGateReason       String?
+  quarterlyBudgetAmount   Float?
+  quarterlyBudgetCurrency Currency          @default(SGD)
+  createdAt               DateTime          @default(now())
   updatedAt           DateTime         @updatedAt
   frameAssessments    FrameAssessment[]
   authorityRules      AuthorityRule[]
@@ -296,6 +300,10 @@ model AIAsset {
   benefitItems        BenefitItem[]
   actions             Action[]
   shadowDiscoveries   ShadowAiCandidate[]
+  bomComponents       AiBomComponent[]
+  dataSources         DataSourceLink[]
+  evalScorecards      EvalScorecard[]
+  policyExceptions    PolicyException[]
   stageGateRequests   StageGateRequest[]
   vendorAssessment    VendorAssessment?
 }
@@ -531,9 +539,12 @@ model Incident {
   occurredAt     DateTime
   severity       Severity
   description    String
-  rootCause      String?
-  lessonsLearned String?
-  status         IncidentStatus @default(OPEN)
+  rootCause              String?
+  lessonsLearned         String?
+  regulatoryFramework    String?
+  notificationDueAt      DateTime?
+  reportedToRegulatorAt  DateTime?
+  status                 IncidentStatus @default(OPEN)
   reportedById   String
   reportedBy     User           @relation(fields: [reportedById], references: [id])
   createdAt      DateTime       @default(now())
@@ -780,4 +791,117 @@ model ShadowAiCandidate {
 
   @@unique([domain, businessUnit, source])
   @@index([status, lastSeenAt])
+}
+
+enum RuntimeGateStatus {
+  ALLOW
+  RESTRICTED
+  SUSPENDED
+}
+
+enum BomComponentType {
+  MODEL
+  PROMPT
+  MCP_SERVER
+  TOOL_API
+  GUARDRAIL
+}
+
+enum DataSourceType {
+  VECTOR_DB
+  DATA_WAREHOUSE
+  DOCUMENT_REPO
+  CRM_ERP
+  API_STREAM
+}
+
+enum EvalType {
+  RED_TEAM
+  HALLUCINATION
+  BIAS_FAIRNESS
+  PROMPT_INJECTION
+  SAFETY_BENCHMARK
+}
+
+enum ExceptionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model AiBomComponent {
+  id            String           @id @default(cuid())
+  assetId       String
+  asset         AIAsset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  componentType BomComponentType
+  name          String
+  version       String           @default("1.0")
+  provider      String?
+  isApproved    Boolean          @default(true)
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([assetId, componentType])
+}
+
+model DataSourceLink {
+  id              String          @id @default(cuid())
+  assetId         String
+  asset           AIAsset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  sourceName      String
+  sourceType      DataSourceType
+  classification  DataSensitivity @default(INTERNAL)
+  piiIncluded     Boolean         @default(false)
+  retentionPolicy String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([assetId])
+}
+
+model EvalScorecard {
+  id          String   @id @default(cuid())
+  assetId     String
+  asset       AIAsset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  suiteName   String
+  evalType    EvalType
+  passRate    Float
+  threshold   Float    @default(85)
+  passed      Boolean
+  notes       String?
+  evaluatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([assetId, evaluatedAt])
+}
+
+model PolicyException {
+  id                   String          @id @default(cuid())
+  assetId              String?
+  asset                AIAsset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  title                String
+  businessUnit         String
+  justification        String
+  compensatingControls String
+  status               ExceptionStatus @default(ACTIVE)
+  expiresAt            DateTime
+  approvedBy           String
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([status, expiresAt])
+}
+
+model PolicyAttestation {
+  id                String   @id @default(cuid())
+  policyName        String
+  policyVersion     String   @default("2026.1")
+  businessUnit      String
+  attestedByName    String
+  attestedByEmail   String
+  trainingCompleted Boolean  @default(true)
+  attestedAt        DateTime @default(now())
+
+  @@index([businessUnit, attestedAt])
 }

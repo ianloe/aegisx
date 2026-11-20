@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { assignPerformanceProfile, ProfileRuleConfig } from "@/lib/governance/aaef-engine";
 import { dispatchAlert } from "@/lib/governance/alerts";
+import { checkQuarterlyBudgetAndAlert, evaluateGateFromBreachSeverity } from "@/lib/governance/budget-and-gate";
 
 function hashToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -31,6 +32,15 @@ const ingestSchema = z.discriminatedUnion("eventType", [
     amount: z.number().nonnegative(),
     currency: z.nativeEnum(Currency).default("SGD"),
     quarter: z.string().min(4),
+  }),
+  z.object({
+    eventType: z.literal("GUARDRAIL_EVENT"),
+    assetCode: z.string().min(1),
+    gateway: z.string().min(1).default("AI Gateway"),
+    violationType: z.enum(["PROMPT_INJECTION", "PII_LEAK", "TOXICITY", "DATA_EXFILTRATION", "OTHER"]).default("OTHER"),
+    blocked: z.boolean().default(true),
+    severity: z.nativeEnum(Severity).default(Severity.MEDIUM),
+    description: z.string().min(4),
   }),
 ]);
 
@@ -170,7 +180,70 @@ export async function POST(request: Request) {
         entityId: asset.id,
       });
 
-      return { breach, reassignedProfileName };
+      const nextGate = evaluateGateFromBreachSeverity(asset.runtimeGateStatus, payload.severity);
+      if (nextGate !== asset.runtimeGateStatus) {
+        await tx.aIAsset.update({
+          where: { id: asset.id },
+          data: {
+            runtimeGateStatus: nextGate,
+            runtimeGateReason: `Auto-${nextGate.toLowerCase()} by ${payload.severity} telemetry breach ${breach.id}`,
+          },
+        });
+      }
+
+      return { breach, reassignedProfileName, runtimeGateStatus: nextGate };
+    });
+
+    return NextResponse.json({ status: "ingested", ...result }, { status: 201 });
+  }
+
+  if (parsed.data.eventType === "GUARDRAIL_EVENT") {
+    const payload = parsed.data;
+    const result = await prisma.$transaction(async (tx) => {
+      let breachId: string | null = null;
+      if (!payload.blocked || payload.severity === "CRITICAL" || payload.severity === "HIGH") {
+        const breach = await tx.boundaryBreach.create({
+          data: {
+            assetId: asset.id,
+            occurredAt: new Date(),
+            severity: payload.severity,
+            description: `[Guardrail: ${payload.gateway} / ${payload.violationType}] ${payload.description}`,
+            remediation: payload.blocked
+              ? "Request blocked by AI Gateway; monitor for repeat attempts."
+              : "Unblocked guardrail violation; immediate review required.",
+            status: "OPEN",
+            reportedById: actorId!,
+          },
+        });
+        breachId = breach.id;
+      }
+
+      await writeAuditLog(tx, {
+        actorId,
+        actorEmail,
+        action: "TELEMETRY_GUARDRAIL_EVENT",
+        entityType: "AI_ASSET",
+        entityId: asset.id,
+        afterState: {
+          assetCode: asset.assetCode,
+          gateway: payload.gateway,
+          violationType: payload.violationType,
+          blocked: payload.blocked,
+          severity: payload.severity,
+          breachId,
+        },
+      });
+
+      await dispatchAlert(tx, {
+        eventType: "GUARDRAIL_VIOLATION",
+        title: `${payload.gateway} ${payload.blocked ? "Blocked" : "Flagged"} ${payload.violationType} on ${asset.assetCode}`,
+        message: payload.description,
+        severity: payload.severity === "CRITICAL" || !payload.blocked ? "CRITICAL" : "WARNING",
+        entityType: "AI_ASSET",
+        entityId: asset.id,
+      });
+
+      return { guardrailEvent: true, breachId, blocked: payload.blocked };
     });
 
     return NextResponse.json({ status: "ingested", ...result }, { status: 201 });
@@ -203,7 +276,14 @@ export async function POST(request: Request) {
         entityId: cost.id,
         afterState: { assetCode: asset.assetCode, amount: cost.amount, currency: cost.currency, quarter: cost.quarter },
       });
-      return { costItem: cost };
+      const budgetCheck = await checkQuarterlyBudgetAndAlert(tx, {
+        assetId: asset.id,
+        assetCode: asset.assetCode,
+        quarter: payload.quarter,
+        quarterlyBudgetAmount: asset.quarterlyBudgetAmount,
+        quarterlyBudgetCurrency: asset.quarterlyBudgetCurrency,
+      });
+      return { costItem: cost, budgetCheck };
     }
 
     const category = (Object.values(BenefitCategory).includes(payload.category as BenefitCategory)

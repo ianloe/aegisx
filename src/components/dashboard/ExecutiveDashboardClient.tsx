@@ -82,11 +82,13 @@ export function ExecutiveDashboardClient({
   businessUnits,
   appetite,
   financialConfig,
+  shadowSummary,
 }: {
   assets: DashboardAsset[];
   businessUnits: Array<{ id: string; code: string; name: string }>;
   appetite: RiskAppetiteThresholds;
   financialConfig: FinancialConfig;
+  shadowSummary: { openCount: number; totalRequests: number };
 }) {
   const [buFilter, setBuFilter] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
@@ -306,7 +308,7 @@ export function ExecutiveDashboardClient({
       </Card>
 
       {/* Top Drill-Down KPI Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <Link href="/assets" className="block group">
           <Card className="h-full transition-colors group-hover:border-primary">
             <CardContent className="p-3.5 space-y-1">
@@ -398,6 +400,23 @@ export function ExecutiveDashboardClient({
               </div>
               <div className="text-[11px] text-muted-foreground">
                 {recentIncidents.length} recent incident(s)
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/shadow-ai" className="block group">
+          <Card className="h-full transition-colors group-hover:border-primary">
+            <CardContent className="p-3.5 space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Shadow AI</span>
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
+              </div>
+              <div className="text-2xl font-semibold tabular-nums text-amber-600">
+                {shadowSummary.openCount}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {shadowSummary.totalRequests.toLocaleString()} observed reqs
               </div>
             </CardContent>
           </Card>
