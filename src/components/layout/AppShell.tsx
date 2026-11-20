@@ -25,6 +25,7 @@ import {
   Bell,
   KeyRound,
   BookOpen,
+  Radar,
 } from "lucide-react";
 import { cn, formatEnumLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Executive Dashboard", icon: LayoutDashboard },
   { href: "/queue", label: "My Governance Queue", icon: Inbox },
   { href: "/assets", label: "AI Asset Register", icon: Cpu },
+  { href: "/shadow-ai", label: "Shadow AI", icon: Radar },
   { href: "/frame", label: "FRAME Governance", icon: ShieldCheck },
   { href: "/aaef", label: "AAEF Appraisals", icon: Bot },
   { href: "/risks", label: "Risk & Controls", icon: AlertTriangle },

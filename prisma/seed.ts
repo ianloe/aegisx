@@ -197,6 +197,11 @@ async function seedReferenceConfig() {
       label: "Overdue Governance Action",
       description: "Trigger when a remediation action passes its due date without closure.",
     },
+    {
+      eventType: "SHADOW_AI_DETECTED",
+      label: "Shadow AI Detected (SASE / DNS / IdP)",
+      description: "Triggers when network or identity telemetry detects unregistered AI service usage.",
+    },
   ];
 
   for (const r of defaultAlertRules) {

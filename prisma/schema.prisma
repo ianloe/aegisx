@@ -295,6 +295,7 @@ model AIAsset {
   costItems           CostItem[]
   benefitItems        BenefitItem[]
   actions             Action[]
+  shadowDiscoveries   ShadowAiCandidate[]
   stageGateRequests   StageGateRequest[]
   vendorAssessment    VendorAssessment?
 }
@@ -740,4 +741,43 @@ model AlertDelivery {
   createdAt  DateTime     @default(now())
 
   @@index([isRead, createdAt])
+}
+
+enum DiscoverySource {
+  SASE
+  DNS
+  IDP
+  CLOUD
+  EXPENSE
+}
+
+enum DiscoveryStatus {
+  DETECTED
+  UNDER_REVIEW
+  SANCTIONED
+  BLOCKED
+  DISMISSED
+}
+
+model ShadowAiCandidate {
+  id             String          @id @default(cuid())
+  domain         String
+  providerName   String
+  category       String          @default("Other AI")
+  source         DiscoverySource @default(SASE)
+  businessUnit   String          @default("Unassigned")
+  requestCount   Int             @default(1)
+  bytesUploaded  Float           @default(0)
+  uniqueUsers    Int             @default(1)
+  status         DiscoveryStatus @default(DETECTED)
+  matchedAssetId String?
+  matchedAsset   AIAsset?        @relation(fields: [matchedAssetId], references: [id], onDelete: SetNull)
+  notes          String?
+  firstSeenAt    DateTime        @default(now())
+  lastSeenAt     DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([domain, businessUnit, source])
+  @@index([status, lastSeenAt])
 }
