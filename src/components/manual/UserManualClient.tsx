@@ -197,6 +197,7 @@ const SECTIONS: ManualSection[] = [
       "Use Business Units to add, edit, or safely remove organisational units, and Users & Roles to add Administrators, Editors, or Viewers.",
       "In API & Integrations (/integrations), generate Bearer tokens for POST /api/telemetry/ingest (Boundary Breaches, Measured ROI, and GUARDRAIL_EVENT), POST /api/telemetry/pydantic (PydanticAI & Pydantic Logfire OTLP), and POST /api/telemetry/mcp-a2a.",
       "Configure In-App Bell, Slack/Teams Webhooks, or Telegram Bot (Bot Token + Chat ID) for automated alerts, run an on-demand Governance Digest, and review Enterprise SSO (OIDC) status.",
+      "In Admin Config -> AI Insights (BYO LLM), connect OpenRouter, Google Gemini, Anthropic Claude, OpenAI, or a custom OpenAI-compatible endpoint (Ollama/vLLM/LiteLLM), test the connection, and generate AI briefings on the Executive Dashboard (/), Shadow AI (/shadow-ai), and Assurance (/assurance).",
     ],
   },
   {

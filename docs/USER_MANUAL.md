@@ -94,7 +94,7 @@ Aegis organises all governance around a central **AI Asset Register**, using **F
 
 ## 11. Administration & API Integrations (`/admin` & `/integrations`)
 
-- **Admin Config (`/admin`)**: Form-based editing for Parameters & Appetite, Business Units CRUD, FRAME Criteria & Rubrics, AAEF Profile Rules, and Users & Roles.
+- **Admin Config (`/admin`)**: Form-based editing for Parameters & Appetite, Business Units CRUD, FRAME Criteria & Rubrics, AAEF Profile Rules, Users & Roles, and **AI Insights (BYO LLM)** (OpenRouter, Gemini, Claude, OpenAI, or Custom OpenAI-compatible endpoints with live connection testing for `/`, `/shadow-ai`, and `/assurance` briefings).
 - **API & Integrations (`/integrations`)**:
   - Generate/revoke Bearer tokens (`agx_live_...`) for:
     - `POST /api/telemetry/ingest`: `BOUNDARY_BREACH`, `ROI_METRIC`, and `GUARDRAIL_EVENT` blocks (prompt injection, PII leaks, toxicity).
