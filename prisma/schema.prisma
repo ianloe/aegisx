@@ -304,6 +304,10 @@ model AIAsset {
   dataSources         DataSourceLink[]
   evalScorecards      EvalScorecard[]
   policyExceptions    PolicyException[]
+  mcpPolicies         McpServerPolicy[]
+  a2aOutboundLinks    A2aPeerLink[]       @relation("A2aSourceAsset")
+  a2aInboundLinks     A2aPeerLink[]       @relation("A2aTargetAsset")
+  protocolCalls       ProtocolCallEvent[]
   stageGateRequests   StageGateRequest[]
   vendorAssessment    VendorAssessment?
 }
@@ -904,4 +908,73 @@ model PolicyAttestation {
   attestedAt        DateTime @default(now())
 
   @@index([businessUnit, attestedAt])
+}
+
+enum ProtocolType {
+  MCP
+  A2A
+}
+
+enum McpToolRiskTier {
+  READ_ONLY
+  WRITE
+  DESTRUCTIVE
+}
+
+model McpServerPolicy {
+  id           String          @id @default(cuid())
+  assetId      String
+  asset        AIAsset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  serverName   String
+  endpointUrl  String?
+  transport    String          @default("STREAMABLE_HTTP")
+  authMode     String          @default("OAUTH2")
+  allowedTools String[]
+  riskTier     McpToolRiskTier @default(READ_ONLY)
+  requiresHitl Boolean         @default(false)
+  isApproved   Boolean         @default(true)
+  callCount    Int             @default(0)
+  lastCalledAt DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([assetId, serverName])
+  @@index([assetId])
+}
+
+model A2aPeerLink {
+  id              String    @id @default(cuid())
+  sourceAssetId   String
+  sourceAsset     AIAsset   @relation("A2aSourceAsset", fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  targetAssetId   String?
+  targetAsset     AIAsset?  @relation("A2aTargetAsset", fields: [targetAssetId], references: [id], onDelete: SetNull)
+  targetName      String
+  agentCardUrl    String?
+  allowedSkills   String[]
+  maxHopDepth     Int       @default(2)
+  allowPiiSharing Boolean   @default(false)
+  isApproved      Boolean   @default(true)
+  callCount       Int       @default(0)
+  lastCalledAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([sourceAssetId])
+}
+
+model ProtocolCallEvent {
+  id              String       @id @default(cuid())
+  protocol        ProtocolType
+  sourceAssetId   String
+  sourceAsset     AIAsset      @relation(fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  targetName      String
+  operation       String
+  hopDepth        Int          @default(1)
+  traceId         String?
+  status          String       @default("OK")
+  durationMs      Int?
+  violationReason String?
+  createdAt       DateTime     @default(now())
+
+  @@index([sourceAssetId, protocol, createdAt])
 }

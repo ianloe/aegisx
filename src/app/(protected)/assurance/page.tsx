@@ -19,13 +19,18 @@ export default async function AssurancePage() {
 
   const quarter = getCurrentQuarter();
 
-  const [assets, exceptions, attestations, incidents, businessUnits] = await Promise.all([
+  const [assets, exceptions, attestations, incidents, businessUnits, protocolEvents] = await Promise.all([
     prisma.aIAsset.findMany({
       include: {
         businessUnit: { select: { name: true } },
         bomComponents: { orderBy: { createdAt: "desc" } },
         dataSources: { orderBy: { createdAt: "desc" } },
         evalScorecards: { orderBy: { evaluatedAt: "desc" } },
+        mcpPolicies: { orderBy: { createdAt: "desc" } },
+        a2aOutboundLinks: {
+          include: { targetAsset: { select: { assetCode: true, name: true } } },
+          orderBy: { createdAt: "desc" },
+        },
         costItems: { where: { quarter }, select: { amount: true, currency: true } },
       },
       orderBy: { assetCode: "asc" },
@@ -43,6 +48,11 @@ export default async function AssurancePage() {
       take: 30,
     }),
     prisma.businessUnit.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
+    prisma.protocolCallEvent.findMany({
+      include: { sourceAsset: { select: { assetCode: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
   ]);
 
   const canWrite = hasPermission(session.role, "assets:write") || hasPermission(session.role, "admin:config");
@@ -79,8 +89,29 @@ export default async function AssurancePage() {
             bomComponents: a.bomComponents.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
             dataSources: a.dataSources.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
             evalScorecards: a.evalScorecards.map((e) => ({ ...e, evaluatedAt: e.evaluatedAt.toISOString() })),
+            mcpPolicies: a.mcpPolicies.map((m) => ({
+              ...m,
+              lastCalledAt: m.lastCalledAt ? m.lastCalledAt.toISOString() : null,
+            })),
+            a2aOutboundLinks: a.a2aOutboundLinks.map((l) => ({
+              ...l,
+              lastCalledAt: l.lastCalledAt ? l.lastCalledAt.toISOString() : null,
+            })),
           };
         })}
+        initialProtocolEvents={protocolEvents.map((ev) => ({
+          id: ev.id,
+          protocol: ev.protocol,
+          sourceAssetCode: ev.sourceAsset.assetCode,
+          targetName: ev.targetName,
+          operation: ev.operation,
+          hopDepth: ev.hopDepth,
+          traceId: ev.traceId,
+          status: ev.status,
+          durationMs: ev.durationMs,
+          violationReason: ev.violationReason,
+          createdAt: ev.createdAt.toISOString(),
+        }))}
         initialExceptions={exceptions.map((ex) => ({
           ...ex,
           expiresAt: ex.expiresAt.toISOString(),

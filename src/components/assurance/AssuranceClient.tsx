@@ -34,6 +34,47 @@ interface EvalRow {
   evaluatedAt: string;
 }
 
+interface McpPolicyRow {
+  id: string;
+  serverName: string;
+  endpointUrl: string | null;
+  transport: string;
+  authMode: string;
+  allowedTools: string[];
+  riskTier: "READ_ONLY" | "WRITE" | "DESTRUCTIVE";
+  requiresHitl: boolean;
+  isApproved: boolean;
+  callCount: number;
+  lastCalledAt: string | null;
+}
+
+interface A2aLinkRow {
+  id: string;
+  targetName: string;
+  targetAsset: { assetCode: string; name: string } | null;
+  agentCardUrl: string | null;
+  allowedSkills: string[];
+  maxHopDepth: number;
+  allowPiiSharing: boolean;
+  isApproved: boolean;
+  callCount: number;
+  lastCalledAt: string | null;
+}
+
+interface ProtocolEventRow {
+  id: string;
+  protocol: "MCP" | "A2A";
+  sourceAssetCode: string;
+  targetName: string;
+  operation: string;
+  hopDepth: number;
+  traceId: string | null;
+  status: string;
+  durationMs: number | null;
+  violationReason: string | null;
+  createdAt: string;
+}
+
 interface AssetAssuranceRow {
   id: string;
   assetCode: string;
@@ -47,6 +88,8 @@ interface AssetAssuranceRow {
   bomComponents: BomRow[];
   dataSources: DataSourceRow[];
   evalScorecards: EvalRow[];
+  mcpPolicies: McpPolicyRow[];
+  a2aOutboundLinks: A2aLinkRow[];
 }
 
 interface ExceptionRow {
@@ -92,9 +135,10 @@ interface Props {
   initialExceptions: ExceptionRow[];
   initialAttestations: AttestationRow[];
   initialIncidents: IncidentTimerRow[];
+  initialProtocolEvents: ProtocolEventRow[];
 }
 
-type TabKey = "gate-bom" | "data-evals" | "exceptions-aup" | "timers" | "finops";
+type TabKey = "gate-bom" | "mcp-a2a" | "data-evals" | "exceptions-aup" | "timers" | "finops";
 
 const GATE_BADGE: Record<AssetAssuranceRow["runtimeGateStatus"], "success" | "warning" | "danger"> = {
   ALLOW: "success",
@@ -111,12 +155,14 @@ export function AssuranceClient({
   initialExceptions,
   initialAttestations,
   initialIncidents,
+  initialProtocolEvents,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("gate-bom");
   const [assets, setAssets] = useState<AssetAssuranceRow[]>(initialAssets);
   const [exceptions, setExceptions] = useState<ExceptionRow[]>(initialExceptions);
   const [attestations, setAttestations] = useState<AttestationRow[]>(initialAttestations);
   const [incidents, setIncidents] = useState<IncidentTimerRow[]>(initialIncidents);
+  const [protocolEvents, setProtocolEvents] = useState<ProtocolEventRow[]>(initialProtocolEvents);
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialAssets[0]?.id ?? "");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -159,6 +205,18 @@ export function AssuranceClient({
   const [timerFramework, setTimerFramework] = useState("PDPC_72H");
   const [timerHours, setTimerHours] = useState("72");
 
+  // MCP & A2A form states
+  const [mcpServer, setMcpServer] = useState("");
+  const [mcpTools, setMcpTools] = useState("read_query, list_tables");
+  const [mcpRiskTier, setMcpRiskTier] = useState<"READ_ONLY" | "WRITE" | "DESTRUCTIVE">("READ_ONLY");
+  const [mcpHitl, setMcpHitl] = useState(false);
+
+  const [a2aTarget, setA2aTarget] = useState("");
+  const [a2aTargetAssetId, setA2aTargetAssetId] = useState("");
+  const [a2aSkills, setA2aSkills] = useState("verify_kyc");
+  const [a2aMaxHop, setA2aMaxHop] = useState("2");
+  const [a2aCardUrl, setA2aCardUrl] = useState("");
+
   async function refreshAll() {
     const res = await fetch("/api/assurance");
     if (res.ok) {
@@ -166,6 +224,33 @@ export function AssuranceClient({
       setAssets(data.assets ?? []);
       setExceptions(data.exceptions ?? []);
       setAttestations(data.attestations ?? []);
+      setProtocolEvents(
+        (data.protocolEvents ?? []).map((ev: {
+          id: string;
+          protocol: "MCP" | "A2A";
+          sourceAsset: { assetCode: string };
+          targetName: string;
+          operation: string;
+          hopDepth: number;
+          traceId: string | null;
+          status: string;
+          durationMs: number | null;
+          violationReason: string | null;
+          createdAt: string;
+        }) => ({
+          id: ev.id,
+          protocol: ev.protocol,
+          sourceAssetCode: ev.sourceAsset?.assetCode ?? "",
+          targetName: ev.targetName,
+          operation: ev.operation,
+          hopDepth: ev.hopDepth,
+          traceId: ev.traceId,
+          status: ev.status,
+          durationMs: ev.durationMs,
+          violationReason: ev.violationReason,
+          createdAt: ev.createdAt,
+        })),
+      );
       setIncidents(
         (data.incidents ?? []).map((inc: {
           id: string;
@@ -227,6 +312,7 @@ export function AssuranceClient({
         <div className="flex flex-wrap gap-1.5">
           {[
             { key: "gate-bom", label: "Kill-Switch & AI-BOM" },
+            { key: "mcp-a2a", label: "MCP & A2A Graph" },
             { key: "data-evals", label: "Data Lineage & Evals" },
             { key: "exceptions-aup", label: "Exceptions & AUP" },
             { key: "timers", label: "Regulatory Timers" },
@@ -244,7 +330,7 @@ export function AssuranceClient({
           ))}
         </div>
 
-        {(tab === "gate-bom" || tab === "data-evals") && assets.length > 0 && (
+        {(tab === "gate-bom" || tab === "mcp-a2a" || tab === "data-evals") && assets.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Asset:</span>
             <Select
@@ -818,6 +904,267 @@ export function AssuranceClient({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {tab === "mcp-a2a" && selectedAsset && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>MCP Server &amp; Tool-Scope Policies ({selectedAsset.assetCode})</CardTitle>
+                <CardDescription>
+                  Define approved Model Context Protocol servers, allowed tools, risk tier, and HITL requirements.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {canWrite && (
+                  <form
+                    className="space-y-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const res = await fetch("/api/assurance", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "ADD_MCP_POLICY",
+                          assetId: selectedAsset.id,
+                          serverName: mcpServer,
+                          allowedTools: mcpTools
+                            .split(",")
+                            .map((t) => t.trim())
+                            .filter(Boolean),
+                          riskTier: mcpRiskTier,
+                          requiresHitl: mcpHitl,
+                        }),
+                      });
+                      if (res.ok) {
+                        setMcpServer("");
+                        setStatusMsg("Saved MCP server policy.");
+                        await refreshAll();
+                      } else {
+                        setErrorMsg("Failed to save MCP server policy.");
+                      }
+                    }}
+                  >
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <Input
+                        required
+                        placeholder="MCP Server (e.g. postgres-mcp)"
+                        value={mcpServer}
+                        onChange={(e) => setMcpServer(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <Input
+                        placeholder="Allowed tools (comma-separated)"
+                        value={mcpTools}
+                        onChange={(e) => setMcpTools(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <Select
+                        value={mcpRiskTier}
+                        onChange={(e) => setMcpRiskTier(e.target.value as "READ_ONLY" | "WRITE" | "DESTRUCTIVE")}
+                        className="h-8 text-xs"
+                      >
+                        <option value="READ_ONLY">Read Only</option>
+                        <option value="WRITE">Write</option>
+                        <option value="DESTRUCTIVE">Destructive</option>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-xs">
+                        <input type="checkbox" checked={mcpHitl} onChange={(e) => setMcpHitl(e.target.checked)} />
+                        Requires Human-in-the-Loop Confirmation
+                      </label>
+                      <Button type="submit" size="sm">Save MCP Policy</Button>
+                    </div>
+                  </form>
+                )}
+                <div className="space-y-2 text-xs">
+                  {selectedAsset.mcpPolicies.length === 0 ? (
+                    <div className="text-muted-foreground">No MCP servers registered for {selectedAsset.assetCode}.</div>
+                  ) : (
+                    selectedAsset.mcpPolicies.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between rounded border border-border p-2.5">
+                        <div>
+                          <div className="font-semibold">
+                            {m.serverName} · <span className="font-mono text-[11px]">{m.riskTier}</span>
+                            {m.requiresHitl && " · HITL"}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Tools: {m.allowedTools.length > 0 ? m.allowedTools.join(", ") : "Any"} · Calls: {m.callCount}
+                          </div>
+                        </div>
+                        <Badge variant={m.isApproved ? "success" : "danger"}>
+                          {m.isApproved ? "Approved" : "Revoked"}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>A2A Agent-to-Agent Trust Links ({selectedAsset.assetCode})</CardTitle>
+                <CardDescription>
+                  Control which downstream agents {selectedAsset.assetCode} may delegate to, permitted skills, and max hop depth.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {canWrite && (
+                  <form
+                    className="space-y-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const targetAsset = assets.find((a) => a.id === a2aTargetAssetId);
+                      const resolvedName = targetAsset ? targetAsset.assetCode : a2aTarget;
+                      const res = await fetch("/api/assurance", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "ADD_A2A_LINK",
+                          sourceAssetId: selectedAsset.id,
+                          targetAssetId: a2aTargetAssetId || null,
+                          targetName: resolvedName,
+                          agentCardUrl: a2aCardUrl || undefined,
+                          allowedSkills: a2aSkills
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                          maxHopDepth: Number(a2aMaxHop) || 2,
+                        }),
+                      });
+                      if (res.ok) {
+                        setA2aTarget("");
+                        setA2aCardUrl("");
+                        setStatusMsg("Added A2A peer trust link.");
+                        await refreshAll();
+                      } else {
+                        setErrorMsg("Failed to add A2A peer link.");
+                      }
+                    }}
+                  >
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <Select
+                        value={a2aTargetAssetId}
+                        onChange={(e) => setA2aTargetAssetId(e.target.value)}
+                        className="h-8 text-xs"
+                      >
+                        <option value="">External A2A Agent (enter name below)</option>
+                        {assets
+                          .filter((a) => a.id !== selectedAsset.id)
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              Internal: {a.assetCode} — {a.name}
+                            </option>
+                          ))}
+                      </Select>
+                      <Input
+                        required={!a2aTargetAssetId}
+                        disabled={Boolean(a2aTargetAssetId)}
+                        placeholder="External peer name (if external)"
+                        value={a2aTarget}
+                        onChange={(e) => setA2aTarget(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <Input
+                        placeholder="Allowed skills (comma-separated)"
+                        value={a2aSkills}
+                        onChange={(e) => setA2aSkills(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        placeholder="Max hops"
+                        value={a2aMaxHop}
+                        onChange={(e) => setA2aMaxHop(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <Input
+                        placeholder="Agent Card URL (/.well-known/agent.json)"
+                        value={a2aCardUrl}
+                        onChange={(e) => setA2aCardUrl(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <Button type="submit" size="sm">Add A2A Trust Link</Button>
+                  </form>
+                )}
+                <div className="space-y-2 text-xs">
+                  {selectedAsset.a2aOutboundLinks.length === 0 ? (
+                    <div className="text-muted-foreground">No A2A peer links configured for {selectedAsset.assetCode}.</div>
+                  ) : (
+                    selectedAsset.a2aOutboundLinks.map((l) => (
+                      <div key={l.id} className="flex items-center justify-between rounded border border-border p-2.5">
+                        <div>
+                          <div className="font-semibold">
+                            {selectedAsset.assetCode} -&gt; {l.targetAsset ? `${l.targetAsset.assetCode} (${l.targetAsset.name})` : l.targetName}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Skills: {l.allowedSkills.length > 0 ? l.allowedSkills.join(", ") : "Any"} · Max Hops: {l.maxHopDepth} · Calls: {l.callCount}
+                          </div>
+                        </div>
+                        <Badge variant={l.isApproved ? "success" : "danger"}>
+                          {l.isApproved ? "Approved" : "Revoked"}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent MCP &amp; A2A Runtime Calls</CardTitle>
+                <CardDescription>
+                  Live delegation traces ingested via <code>POST /api/telemetry/mcp-a2a</code>. Unapproved calls automatically log Boundary Breaches.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {protocolEvents.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No MCP or A2A runtime calls ingested yet.</div>
+                ) : (
+                  <div className="space-y-1.5 text-xs">
+                    {protocolEvents.map((ev) => (
+                      <div key={ev.id} className="flex items-center justify-between rounded border border-border px-2.5 py-1.5">
+                        <div>
+                          <span className="font-semibold">[{ev.protocol}]</span> {ev.sourceAssetCode} -&gt; {ev.targetName}{" "}
+                          <span className="font-mono text-[11px] text-muted-foreground">({ev.operation}, hop {ev.hopDepth})</span>
+                          {ev.violationReason && (
+                            <div className="text-[11px] text-red-600">{ev.violationReason}</div>
+                          )}
+                        </div>
+                        <Badge variant={ev.status === "OK" ? "success" : "danger"}>{ev.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Stream MCP / A2A Telemetry</CardTitle>
+                <CardDescription>
+                  Send tool invocations or A2A task delegations from your gateway or middleware.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="rounded-md bg-surface-muted p-2.5 font-mono text-[11px] overflow-x-auto select-all">
+                  {`curl -X POST http://localhost:3000/api/telemetry/mcp-a2a \\\n  -H "Authorization: Bearer agx_live_YOUR_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "protocol": "MCP",\n    "assetCode": "${selectedAsset.assetCode}",\n    "targetName": "postgres-mcp",\n    "operation": "read_query",\n    "hopDepth": 1,\n    "traceId": "trace-abc-123"\n  }'`}
+                </pre>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   );

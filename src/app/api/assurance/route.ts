@@ -7,6 +7,7 @@ import {
   DataSourceType,
   EvalType,
   ExceptionStatus,
+  McpToolRiskTier,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
@@ -27,13 +28,18 @@ export async function GET() {
 
   const quarter = getCurrentQuarter();
 
-  const [assets, exceptions, attestations, incidents] = await Promise.all([
+  const [assets, exceptions, attestations, incidents, protocolEvents] = await Promise.all([
     prisma.aIAsset.findMany({
       include: {
         businessUnit: { select: { name: true } },
         bomComponents: { orderBy: { createdAt: "desc" } },
         dataSources: { orderBy: { createdAt: "desc" } },
         evalScorecards: { orderBy: { evaluatedAt: "desc" } },
+        mcpPolicies: { orderBy: { createdAt: "desc" } },
+        a2aOutboundLinks: {
+          include: { targetAsset: { select: { assetCode: true, name: true } } },
+          orderBy: { createdAt: "desc" },
+        },
         costItems: {
           where: { quarter },
           select: { amount: true, currency: true },
@@ -51,6 +57,11 @@ export async function GET() {
     prisma.incident.findMany({
       include: { asset: { select: { assetCode: true, name: true } } },
       orderBy: { occurredAt: "desc" },
+      take: 30,
+    }),
+    prisma.protocolCallEvent.findMany({
+      include: { sourceAsset: { select: { assetCode: true, name: true } } },
+      orderBy: { createdAt: "desc" },
       take: 30,
     }),
   ]);
@@ -75,6 +86,8 @@ export async function GET() {
       bomComponents: a.bomComponents,
       dataSources: a.dataSources,
       evalScorecards: a.evalScorecards,
+      mcpPolicies: a.mcpPolicies,
+      a2aOutboundLinks: a.a2aOutboundLinks,
     };
   });
 
@@ -84,6 +97,7 @@ export async function GET() {
     exceptions,
     attestations,
     incidents,
+    protocolEvents,
   });
 }
 
@@ -145,6 +159,27 @@ const postSchema = z.discriminatedUnion("action", [
     incidentId: z.string().min(1),
     regulatoryFramework: z.string().min(2),
     hoursUntilDue: z.number().int().min(1).max(720).default(72),
+  }),
+  z.object({
+    action: z.literal("ADD_MCP_POLICY"),
+    assetId: z.string().min(1),
+    serverName: z.string().min(1),
+    endpointUrl: z.string().optional(),
+    transport: z.string().default("STREAMABLE_HTTP"),
+    authMode: z.string().default("OAUTH2"),
+    allowedTools: z.array(z.string()).default([]),
+    riskTier: z.nativeEnum(McpToolRiskTier).default(McpToolRiskTier.READ_ONLY),
+    requiresHitl: z.boolean().default(false),
+  }),
+  z.object({
+    action: z.literal("ADD_A2A_LINK"),
+    sourceAssetId: z.string().min(1),
+    targetAssetId: z.string().optional().nullable(),
+    targetName: z.string().min(1),
+    agentCardUrl: z.string().optional(),
+    allowedSkills: z.array(z.string()).default([]),
+    maxHopDepth: z.number().int().min(1).max(10).default(2),
+    allowPiiSharing: z.boolean().default(false),
   }),
 ]);
 
@@ -303,6 +338,63 @@ export async function POST(request: Request) {
     return NextResponse.json({ asset: updated });
   }
 
+  if (data.action === "ADD_MCP_POLICY") {
+    const created = await prisma.mcpServerPolicy.upsert({
+      where: { assetId_serverName: { assetId: data.assetId, serverName: data.serverName } },
+      update: {
+        endpointUrl: data.endpointUrl || null,
+        transport: data.transport,
+        authMode: data.authMode,
+        allowedTools: data.allowedTools,
+        riskTier: data.riskTier,
+        requiresHitl: data.requiresHitl,
+      },
+      create: {
+        assetId: data.assetId,
+        serverName: data.serverName,
+        endpointUrl: data.endpointUrl || null,
+        transport: data.transport,
+        authMode: data.authMode,
+        allowedTools: data.allowedTools,
+        riskTier: data.riskTier,
+        requiresHitl: data.requiresHitl,
+      },
+    });
+    await writeAuditLog(prisma, {
+      actorId: session.id,
+      actorEmail: session.email,
+      action: "MCP_POLICY_SAVED",
+      entityType: "AI_ASSET",
+      entityId: data.assetId,
+      afterState: { serverName: created.serverName, allowedTools: created.allowedTools, riskTier: created.riskTier },
+    });
+    return NextResponse.json({ mcpPolicy: created }, { status: 201 });
+  }
+
+  if (data.action === "ADD_A2A_LINK") {
+    const created = await prisma.a2aPeerLink.create({
+      data: {
+        sourceAssetId: data.sourceAssetId,
+        targetAssetId: data.targetAssetId || null,
+        targetName: data.targetName,
+        agentCardUrl: data.agentCardUrl || null,
+        allowedSkills: data.allowedSkills,
+        maxHopDepth: data.maxHopDepth,
+        allowPiiSharing: data.allowPiiSharing,
+      },
+      include: { targetAsset: { select: { assetCode: true, name: true } } },
+    });
+    await writeAuditLog(prisma, {
+      actorId: session.id,
+      actorEmail: session.email,
+      action: "A2A_PEER_LINK_ADDED",
+      entityType: "AI_ASSET",
+      entityId: data.sourceAssetId,
+      afterState: { targetName: created.targetName, allowedSkills: created.allowedSkills, maxHopDepth: created.maxHopDepth },
+    });
+    return NextResponse.json({ a2aLink: created }, { status: 201 });
+  }
+
   // SET_INCIDENT_TIMER
   const dueAt = new Date(Date.now() + data.hoursUntilDue * 3600 * 1000);
   const updatedIncident = await prisma.incident.update({
@@ -339,6 +431,16 @@ const patchSchema = z.discriminatedUnion("action", [
     action: z.literal("MARK_INCIDENT_REPORTED"),
     id: z.string().min(1),
   }),
+  z.object({
+    action: z.literal("TOGGLE_MCP_APPROVAL"),
+    id: z.string().min(1),
+    isApproved: z.boolean(),
+  }),
+  z.object({
+    action: z.literal("TOGGLE_A2A_APPROVAL"),
+    id: z.string().min(1),
+    isApproved: z.boolean(),
+  }),
 ]);
 
 export async function PATCH(request: Request) {
@@ -371,6 +473,22 @@ export async function PATCH(request: Request) {
       data: { isApproved: parsed.data.isApproved },
     });
     return NextResponse.json({ component: updated });
+  }
+
+  if (parsed.data.action === "TOGGLE_MCP_APPROVAL") {
+    const updated = await prisma.mcpServerPolicy.update({
+      where: { id: parsed.data.id },
+      data: { isApproved: parsed.data.isApproved },
+    });
+    return NextResponse.json({ mcpPolicy: updated });
+  }
+
+  if (parsed.data.action === "TOGGLE_A2A_APPROVAL") {
+    const updated = await prisma.a2aPeerLink.update({
+      where: { id: parsed.data.id },
+      data: { isApproved: parsed.data.isApproved },
+    });
+    return NextResponse.json({ a2aLink: updated });
   }
 
   const updated = await prisma.incident.update({
