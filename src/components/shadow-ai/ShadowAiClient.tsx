@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { AiInsightsCard } from "@/components/ai/AiInsightsCard";
 
 export interface ShadowAiRow {
   id: string;
@@ -214,6 +215,12 @@ export function ShadowAiClient({ initialCandidates, canTriage, canSimulate }: Pr
           </CardContent>
         </Card>
       </div>
+
+      <AiInsightsCard
+        scope="SHADOW_AI"
+        title="AI Shadow Triage & Exfiltration Brief"
+        description="Analyses SASE, DNS, and IdP Shadow AI detections to recommend onboarding vs blocking priorities."
+      />
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">

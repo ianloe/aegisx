@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { AiInsightsCard } from "@/components/ai/AiInsightsCard";
 
 interface BomRow {
   id: string;
@@ -307,6 +308,12 @@ export function AssuranceClient({
           {errorMsg}
         </div>
       )}
+
+      <AiInsightsCard
+        scope="ASSURANCE_AND_RISK"
+        title="AI Assurance & Runtime Control Brief"
+        description="Summarises failed evals, unapproved MCP/A2A calls, active waivers, and pending statutory incident deadlines."
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">

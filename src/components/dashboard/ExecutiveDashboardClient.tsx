@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
+import { AiInsightsCard } from "@/components/ai/AiInsightsCard";
 import { calculateGenericRoi, FinancialConfig } from "@/lib/governance/roi-engine";
 import { evaluateRiskPosture, RiskAppetiteThresholds } from "@/lib/governance/risk-scoring";
 import { formatCurrency, formatDate, formatEnumLabel } from "@/lib/utils";
@@ -422,6 +423,12 @@ export function ExecutiveDashboardClient({
           </Card>
         </Link>
       </div>
+
+      <AiInsightsCard
+        scope="EXECUTIVE_DASHBOARD"
+        title="AI Executive & Board Briefing"
+        description="On-demand governance synthesis across FRAME maturity, AAEF profiles, risks, Shadow AI, and ROI using your configured LLM."
+      />
 
       {/* Charts Row: Lifecycle, Autonomy, and AAEF Profile Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

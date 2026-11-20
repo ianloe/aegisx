@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePageSession } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/rbac";
 import { getSsoConfig } from "@/lib/auth/sso";
+import { AI_PROVIDER_CONFIG_KEY, AiProviderConfig, maskAiConfig } from "@/lib/ai/provider-client";
 import { AdminClient } from "@/components/admin/AdminClient";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,10 @@ export default async function AdminPage() {
     ]);
 
   const ssoConfig = getSsoConfig();
+  const rawAiCfg = configs.find((c) => c.key === AI_PROVIDER_CONFIG_KEY)?.valueJson as
+    | Partial<AiProviderConfig>
+    | undefined;
+  const initialAiConfig = maskAiConfig(rawAiCfg);
 
   return (
     <div className="space-y-6">
@@ -60,7 +65,10 @@ export default async function AdminPage() {
       </div>
 
       <AdminClient
-        initialConfigs={configs.map((c) => ({ ...c, valueJson: c.valueJson as Record<string, unknown> }))}
+        initialConfigs={configs
+          .filter((c) => c.key !== AI_PROVIDER_CONFIG_KEY)
+          .map((c) => ({ ...c, valueJson: c.valueJson as Record<string, unknown> }))}
+        initialAiConfig={initialAiConfig}
         initialCriteria={criteria.map((c) => ({ ...c, rubricJson: c.rubricJson as Record<string, string> }))}
         initialProfiles={profiles.map((p) => ({
           ...p,

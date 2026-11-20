@@ -94,6 +94,16 @@ interface SsoStatusInfo {
   hasClientSecret: boolean;
 }
 
+interface MaskedAiConfigProp {
+  enabled: boolean;
+  provider: "OPENAI" | "OPENROUTER" | "GEMINI" | "ANTHROPIC" | "CUSTOM_OPENAI";
+  model: string;
+  baseUrl: string;
+  hasApiKey: boolean;
+  maskedKey: string;
+  temperature: number;
+}
+
 function getRoleTierLabel(code: string): "Administrator" | "Editor" | "Viewer" {
   if (code === "ADMIN") return "Administrator";
   if (code === "EXECUTIVE" || code === "AUDITOR") return "Viewer";
@@ -111,6 +121,7 @@ export function AdminClient({
   initialTelemetryKeys,
   assets,
   ssoConfig,
+  initialAiConfig,
   canEdit,
 }: {
   initialConfigs: ConfigRow[];
@@ -123,9 +134,19 @@ export function AdminClient({
   initialTelemetryKeys: TelemetryKeyRow[];
   assets: SimpleAssetRow[];
   ssoConfig: SsoStatusInfo;
+  initialAiConfig: MaskedAiConfigProp;
   canEdit: boolean;
 }) {
-  const [tab, setTab] = useState<"params" | "business-units" | "frame" | "aaef" | "users" | "integrations">("params");
+  const [tab, setTab] = useState<"params" | "business-units" | "frame" | "aaef" | "users" | "integrations" | "ai-insights">("params");
+  const [aiEnabled, setAiEnabled] = useState(initialAiConfig.enabled);
+  const [aiProvider, setAiProvider] = useState(initialAiConfig.provider);
+  const [aiModel, setAiModel] = useState(initialAiConfig.model);
+  const [aiBaseUrl, setAiBaseUrl] = useState(initialAiConfig.baseUrl);
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiHasKey, setAiHasKey] = useState(initialAiConfig.hasApiKey);
+  const [aiMaskedKey, setAiMaskedKey] = useState(initialAiConfig.maskedKey);
+  const [aiTemperature, setAiTemperature] = useState(String(initialAiConfig.temperature));
+  const [aiTesting, setAiTesting] = useState(false);
   const [configs, setConfigs] = useState(initialConfigs);
   const [criteria, setCriteria] = useState(initialCriteria);
   const [profiles, setProfiles] = useState(initialProfiles);
@@ -355,6 +376,7 @@ export function AdminClient({
           { id: "aaef", label: "AAEF Profile Rules" },
           { id: "users", label: "Users & Roles" },
           { id: "integrations", label: "Alerts & Integrations" },
+          { id: "ai-insights", label: "AI Insights (BYO LLM)" },
         ].map((t) => (
           <Button
             key={t.id}
@@ -1157,6 +1179,175 @@ export function AdminClient({
             </Card>
           </div>
         </div>
+      )}
+
+      {tab === "ai-insights" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bring Your Own AI Provider (AI Insights)</CardTitle>
+            <CardDescription>
+              Connect OpenRouter, Google Gemini, Anthropic Claude, OpenAI, or any OpenAI-compatible gateway (Ollama, LiteLLM, vLLM) to power AI Insights on the Executive Dashboard, Shadow AI, and Assurance pages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium block mb-1">AI Provider</label>
+                <Select
+                  disabled={!canEdit}
+                  value={aiProvider}
+                  onChange={(e) => {
+                    const p = e.target.value as MaskedAiConfigProp["provider"];
+                    setAiProvider(p);
+                    const defaults: Record<MaskedAiConfigProp["provider"], string> = {
+                      OPENAI: "gpt-4o-mini",
+                      OPENROUTER: "openai/gpt-4o-mini",
+                      GEMINI: "gemini-2.5-flash",
+                      ANTHROPIC: "claude-3-5-sonnet-latest",
+                      CUSTOM_OPENAI: "llama3.1",
+                    };
+                    setAiModel(defaults[p]);
+                  }}
+                >
+                  <option value="OPENROUTER">OpenRouter (Multi-Model)</option>
+                  <option value="GEMINI">Google Gemini</option>
+                  <option value="ANTHROPIC">Anthropic Claude</option>
+                  <option value="OPENAI">OpenAI</option>
+                  <option value="CUSTOM_OPENAI">Custom OpenAI-Compatible (Ollama / vLLM / LiteLLM)</option>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Model Identifier</label>
+                <Input
+                  disabled={!canEdit}
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder="e.g. openai/gpt-4o-mini or gemini-2.5-flash"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">
+                  API Key {aiHasKey && <span className="text-muted-foreground">(Saved: {aiMaskedKey})</span>}
+                </label>
+                <Input
+                  disabled={!canEdit}
+                  type="password"
+                  value={aiApiKey}
+                  onChange={(e) => setAiApiKey(e.target.value)}
+                  placeholder={aiHasKey ? "Leave blank to keep existing key" : "Paste provider API key"}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">
+                  Custom Base URL {aiProvider !== "CUSTOM_OPENAI" && <span className="text-muted-foreground">(Custom provider only)</span>}
+                </label>
+                <Input
+                  disabled={!canEdit || aiProvider !== "CUSTOM_OPENAI"}
+                  value={aiBaseUrl}
+                  onChange={(e) => setAiBaseUrl(e.target.value)}
+                  placeholder="http://localhost:11434/v1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Temperature (0.0 to 1.5)</label>
+                <Input
+                  disabled={!canEdit}
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={1.5}
+                  value={aiTemperature}
+                  onChange={(e) => setAiTemperature(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={!canEdit}
+                    checked={aiEnabled}
+                    onChange={(e) => setAiEnabled(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span>Enable AI Insights across Aegis</span>
+                </label>
+              </div>
+            </div>
+
+            {canEdit && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    setStatusMsg(null);
+                    setErrorMsg(null);
+                    const res = await fetch("/api/ai/config", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        action: "SAVE",
+                        enabled: aiEnabled,
+                        provider: aiProvider,
+                        model: aiModel,
+                        baseUrl: aiBaseUrl,
+                        apiKey: aiApiKey,
+                        temperature: Number(aiTemperature) || 0.2,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setAiHasKey(data.config.hasApiKey);
+                      setAiMaskedKey(data.config.maskedKey);
+                      setAiApiKey("");
+                      setStatusMsg(`Saved AI Insights provider (${data.config.provider} / ${data.config.model}).`);
+                    } else {
+                      setErrorMsg(data.error || "Failed to save AI provider configuration.");
+                    }
+                  }}
+                >
+                  Save AI Provider
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={aiTesting}
+                  onClick={async () => {
+                    setAiTesting(true);
+                    setStatusMsg(null);
+                    setErrorMsg(null);
+                    try {
+                      const res = await fetch("/api/ai/config", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "TEST",
+                          enabled: true,
+                          provider: aiProvider,
+                          model: aiModel,
+                          baseUrl: aiBaseUrl,
+                          apiKey: aiApiKey,
+                          temperature: Number(aiTemperature) || 0.2,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setStatusMsg(`Connection verified (${data.provider} / ${data.model}): "${data.reply}"`);
+                      } else {
+                        setErrorMsg(data.error || "Connection test failed.");
+                      }
+                    } finally {
+                      setAiTesting(false);
+                    }
+                  }}
+                >
+                  {aiTesting ? "Testing..." : "Test Connection"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
