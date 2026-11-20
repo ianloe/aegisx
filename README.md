@@ -9,6 +9,7 @@ An evidence-based enterprise AI governance and agent appraisal web application o
 - **FRAME** provides the enterprise governance envelope across five dimensions: **Focus**, **Roles**, **Authority**, **Metrics**, and **Evaluation**.
 - **AAEF (AI Agent Evaluation Framework)** evaluates AI agents inside that envelope across **Task Competence**, **Judgement Quality**, **Boundary Adherence** (binary), **Collaboration Effectiveness**, and **Improvement Trajectory**, assigning one of four performance profiles: **Operational**, **Developing**, **Restricted**, or **Under Review**.
 - **User Manual**: Available in-app at `/manual` and in [docs/USER_MANUAL.md](docs/USER_MANUAL.md).
+- **Online Training Portal & Facilitator Guides**: Interactive role-based labs, progress tracker, knowledge check quiz, and Trainer Guide Mode in-app at `/learn`, plus printable [Participant Workbook](docs/TRAINING_PARTICIPANT_WORKBOOK.md) and [Trainer Guide](docs/TRAINER_GUIDE.md).
 
 ---
 
@@ -23,7 +24,7 @@ An evidence-based enterprise AI governance and agent appraisal web application o
 - **FRAME & AAEF Operationalisation**: Conduct structured FRAME maturity assessments (0 to 4 rubrics), run AAEF appraisal cycles with dynamic profile assignment, and enforce lifecycle stage-gate readiness checks.
 - **Risk Register, Incidents & Regulatory Crosswalks**: Track 5x5 risk postures against configurable risk appetite thresholds and map controls to **IMDA Model AI Governance Framework**, **ISO/IEC 42001**, **NIST AI RMF**, and **EU AI Act**.
 - **Value, ROI & Board Reporting**: Separate Measured, Estimated, and Assumed benefits with SGD/USD currency conversion, Risk-Adjusted ROI, Value-at-Risk, CSV import/export, and one-click A4 PDF Board Pack generation.
-- **Enterprise Readiness**: Role-based access control (6 governance roles), immutable audit logging (`/audit-log`), OIDC/SSO readiness, and a built-in interactive User Manual (`/manual`).
+- **Enterprise Readiness**: Role-based access control (6 governance roles), immutable audit logging (`/audit`), OIDC/SSO readiness, an interactive User Manual (`/manual`), and an Online Training Portal (`/learn`).
 
 ---
 
