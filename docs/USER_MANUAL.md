@@ -107,16 +107,37 @@ Aegis organises all governance around a central **AI Asset Register**, using **F
 
 ## 12. Shadow AI Discovery & Visibility (`/shadow-ai`)
 
-- **Network & Identity Feeds (`POST /api/discovery/ingest`)**: Stream aggregated SASE/SWG, DNS resolver, IdP/OAuth, Cloud, or Expense events to detect unregistered AI usage.
-- **Catalogue Matching & Alerts**: Automatically identifies 35+ AI providers, tracks request counts and uploaded bytes, and fires `SHADOW_AI_DETECTED` alerts.
-- **Triage**: Review candidates in `/shadow-ai` and **Promote** them directly into the AI Asset Register (`IDEA` stage), **Block**, or **Dismiss** them.
+Aegis captures unregistered AI usage by ingesting aggregated network and identity feeds and turning detections into a governed triage workflow:
+
+1. **Feed Sources (`POST /api/discovery/ingest`)**: Forward aggregated events from **SASE/SWG** (Zscaler, Netskope, Cloudflare Gateway), **DNS Resolver logs** (Cisco Umbrella, Infoblox, Route53), **IdP/OAuth grants** (Okta, Entra ID), **Cloud**, or **Expense** feeds using a `Bearer agx_live_...` key.
+2. **Payload & Catalogue Matching**: Submit `{ domain, source, businessUnit, requestCount, bytesUploaded, uniqueUsers }` (or `{ events: [...] }`). Aegis normalises hostnames and matches them against 35+ known AI providers. Use `onlyKnownAi: true` when forwarding unfiltered DNS/SASE traffic.
+3. **Deduplication & Alerts**: Records deduplicate by `(domain, businessUnit, source)`, accumulating `requestCount` and `bytesUploaded`. New discoveries (and any traffic hitting a `BLOCKED` domain) trigger `SHADOW_AI_DETECTED` alerts to In-App, Slack/Teams, or Telegram.
+4. **Triage (`/shadow-ai` & `/` KPI Tile)**: Filter by source or status, then **Promote** (creates a new `AIAsset` in `IDEA` stage and marks `SANCTIONED`), **Block**, or **Dismiss**.
 
 ---
 
-## 13. Assurance, Kill-Switch, AI-BOM & MCP/A2A (`/assurance`)
+## 13. Assurance, Runtime Kill-Switch, AI-BOM & MCP / A2A Telemetry (`/assurance`)
 
-- **Runtime Kill-Switch (`GET / PATCH /api/assets/[id]/gate`)**: Production orchestrators poll the gate status (`ALLOW`, `RESTRICTED`, `SUSPENDED`) before executing autonomous actions. `CRITICAL` telemetry breaches auto-suspend the gate.
-- **AI Bill of Materials (AI-BOM)**: Register approved foundation models, system prompts, MCP servers, tools/APIs, and guardrails per asset.
-- **MCP & A2A Trust Graph**: Define allowed MCP server tools/HITL rules and A2A peer trust links (permitted skills and max hop depth). Unapproved calls streamed to `POST /api/telemetry/mcp-a2a` automatically log Boundary Breaches and fire `UNAPPROVED_MCP_OR_A2A` alerts.
-- **RAG Data Lineage & Red-Team Evals**: Map data repositories with PII/sensitivity tags and record Red-Team, Prompt-Injection, Hallucination, and Bias evaluation scorecards.
-- **Exceptions, AUP, Statutory Timers & FinOps**: Grant time-bound policy waivers, log staff AUP/training attestations, attach PDPC 72h / EU AI Act / MAS TRM notification countdowns to incidents, and set quarterly FinOps spend caps (`BUDGET_ALERT` at 80% and 100%).
+- **Runtime Kill-Switch (`GET / PATCH /api/assets/[id]/gate`)**: Production orchestrators poll the gate status (`ALLOW`, `RESTRICTED`, `SUSPENDED`) before executing autonomous actions. `CRITICAL` telemetry breaches automatically suspend the gate; `HIGH` breaches restrict it.
+- **AI Bill of Materials (AI-BOM) & RAG Data Lineage**: Register approved foundation models, system prompts, MCP servers, tools/APIs, and guardrails per asset, alongside linked Vector DBs, Data Warehouses, and PII classifications.
+- **How MCP Telemetry Works (`POST /api/telemetry/mcp-a2a`)**:
+  - Register `McpServerPolicy` entries per asset (`serverName`, `allowedTools`, `riskTier: READ_ONLY | WRITE | DESTRUCTIVE`, `requiresHitl`).
+  - Stream runtime tool invocations (`{ protocol: "MCP", assetCode, targetName, operation, traceId }`).
+  - Unregistered/revoked servers or out-of-scope tools log `UNAPPROVED` traces, create a `HIGH` `BoundaryBreach`, restrict the runtime gate, and fire `UNAPPROVED_MCP_OR_A2A` alerts.
+- **How A2A Telemetry Works (`POST /api/telemetry/mcp-a2a`)**:
+  - Register `A2aPeerLink` edges from a source asset to an internal asset or external Agent Card URL (`/.well-known/agent.json`), defining `allowedSkills` and `maxHopDepth`.
+  - Stream agent-to-agent delegations (`{ protocol: "A2A", assetCode, targetName, operation, hopDepth, traceId }`).
+  - Unapproved peers, disallowed skills, or delegations exceeding `maxHopDepth` trigger `BoundaryBreach` records, gate restrictions, and `UNAPPROVED_MCP_OR_A2A` alerts.
+- **Evals, Exceptions, AUP, Statutory Timers & FinOps**: Record Red-Team/Prompt-Injection/Hallucination scorecards, grant time-bound policy waivers, log staff AUP/training attestations, attach PDPC 72h / EU AI Act / MAS TRM notification countdowns to incidents, and set quarterly FinOps spend caps (`BUDGET_ALERT` at 80% and 100%).
+
+---
+
+## 14. AI Insights (Bring Your Own LLM) (`/admin` -> `AI Insights`)
+
+1. **Configuration (`/admin`)**: Open **AI Insights (BYO LLM)** and choose **OpenRouter**, **Google Gemini**, **Anthropic Claude**, **OpenAI**, or **Custom OpenAI-Compatible** (Ollama, vLLM, LiteLLM, Azure OpenAI). Enter your Model ID and API Key, click **Test Connection**, enable AI Insights, and save.
+2. **Security**: API keys are stored server-side in `GovernanceConfig`, masked in the UI (`sk-o...cdef`), and never exposed to the browser. Only aggregated governance metrics (never raw PII) are sent in prompts.
+3. **Where Insights Appear**:
+   - **Executive Dashboard (`/`)**: **AI Executive & Board Briefing**
+   - **Shadow AI (`/shadow-ai`)**: **AI Shadow Triage & Exfiltration Brief**
+   - **Assurance (`/assurance`)**: **AI Assurance & Runtime Control Brief**
+4. **Auditability**: Every call is logged in `/audit` under `AI_INSIGHT_GENERATED` with scope, provider, and model.
