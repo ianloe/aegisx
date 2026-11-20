@@ -89,6 +89,42 @@ export function IntegrationsClient({
     "quarter": "2026-Q4"
   }'`;
 
+  const pydanticPython = `import httpx
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import UnexpectedModelBehavior, UsageLimitExceeded
+
+agent = Agent("openai:gpt-4o")
+AEGIS_URL = "http://localhost:3000/api/telemetry/pydantic"
+HEADERS = {"Authorization": "Bearer ${sampleToken}"}
+
+try:
+    result = agent.run_sync("Triage claim #4821")
+    u = result.usage()
+    httpx.post(AEGIS_URL, headers=HEADERS, json={
+        "framework": "pydantic-ai",
+        "assetCode": "${sampleAsset}",
+        "agentName": "claims_triage_agent",
+        "model": "openai:gpt-4o",
+        "status": "ok",
+        "usage": {
+            "requests": u.requests,
+            "request_tokens": u.request_tokens,
+            "response_tokens": u.response_tokens,
+            "total_tokens": u.total_tokens,
+        },
+        "costAmount": 0.042,
+        "currency": "USD",
+    })
+except (UsageLimitExceeded, UnexpectedModelBehavior) as exc:
+    httpx.post(AEGIS_URL, headers=HEADERS, json={
+        "framework": "pydantic-ai",
+        "assetCode": "${sampleAsset}",
+        "agentName": "claims_triage_agent",
+        "status": "usage_limit_exceeded" if isinstance(exc, UsageLimitExceeded) else "error",
+        "errorType": type(exc).__name__,
+        "errorMessage": str(exc),
+    })`;
+
   return (
     <div className="space-y-6">
       {statusMsg && (
@@ -268,6 +304,18 @@ export function IntegrationsClient({
               <div className="font-semibold mb-1">2. Push Measured ROI Cost / Benefit</div>
               <pre className="rounded-md bg-surface-muted p-2.5 font-mono text-[11px] overflow-x-auto select-all">
                 {roiCurl}
+              </pre>
+            </div>
+            <div>
+              <div className="font-semibold mb-1">
+                3. PydanticAI &amp; Logfire OTLP Telemetry (<code>POST /api/telemetry/pydantic</code>)
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-1.5">
+                Accepts PydanticAI run payloads and OpenTelemetry / Logfire <code>resourceSpans</code> batches (use{" "}
+                <code>?assetCode={sampleAsset}</code> when configuring Logfire webhooks).
+              </p>
+              <pre className="rounded-md bg-surface-muted p-2.5 font-mono text-[11px] overflow-x-auto select-all">
+                {pydanticPython}
               </pre>
             </div>
 
