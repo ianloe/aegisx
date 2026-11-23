@@ -26,6 +26,7 @@ export function SecuritySettingsClient({ initialMfaEnabled, initialPasskeys }: P
   const [passkeys, setPasskeys] = useState<PasskeyRow[]>(initialPasskeys);
   const [setupSecret, setSetupSecret] = useState<string | null>(null);
   const [setupUri, setSetupUri] = useState<string | null>(null);
+  const [setupQrDataUrl, setSetupQrDataUrl] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [disableCode, setDisableCode] = useState("");
   const [deviceName, setDeviceName] = useState("Work Laptop Passkey");
@@ -126,6 +127,7 @@ export function SecuritySettingsClient({ initialMfaEnabled, initialPasskeys }: P
                   if (res.ok) {
                     setSetupSecret(null);
                     setSetupUri(null);
+                    setSetupQrDataUrl(null);
                     setTotpCode("");
                     setStatusMsg("Authenticator App MFA enabled.");
                     await refreshSecurity();
@@ -134,12 +136,24 @@ export function SecuritySettingsClient({ initialMfaEnabled, initialPasskeys }: P
                   }
                 }}
               >
-                <div className="rounded-md border border-border bg-surface-muted/50 p-3 space-y-1.5">
-                  <div className="font-semibold">1. Add this secret key to your Authenticator App:</div>
-                  <div className="font-mono text-sm select-all">{setupSecret}</div>
+                <div className="rounded-md border border-border bg-surface-muted/50 p-3 space-y-2.5">
+                  <div className="font-semibold">1. Scan this QR code with your Authenticator App:</div>
+                  {setupQrDataUrl && (
+                    <div className="inline-block rounded-md border border-border bg-white p-2">
+                      <img
+                        src={setupQrDataUrl}
+                        alt="Authenticator MFA QR Code"
+                        className="h-44 w-44"
+                      />
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground">
+                    Or enter this secret key manually:{" "}
+                    <span className="font-mono font-semibold text-foreground select-all">{setupSecret}</span>
+                  </div>
                   {setupUri && (
-                    <div className="text-[11px] text-muted-foreground break-all">
-                      URI: <code>{setupUri}</code>
+                    <div className="text-[10px] text-muted-foreground break-all">
+                      <code>{setupUri}</code>
                     </div>
                   )}
                 </div>
@@ -173,6 +187,7 @@ export function SecuritySettingsClient({ initialMfaEnabled, initialPasskeys }: P
                   if (res.ok) {
                     setSetupSecret(data.secret);
                     setSetupUri(data.otpauthUri);
+                    setSetupQrDataUrl(data.qrDataUrl || null);
                   } else {
                     setErrorMsg(data.error || "Failed to generate MFA secret.");
                   }

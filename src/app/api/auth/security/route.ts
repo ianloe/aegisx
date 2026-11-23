@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit";
@@ -57,7 +58,8 @@ export async function POST(request: Request) {
   if (data.action === "SETUP_MFA") {
     const secret = generateTotpSecret();
     const otpauthUri = buildOtpAuthUri(session.email, secret);
-    return NextResponse.json({ secret, otpauthUri });
+    const qrDataUrl = await QRCode.toDataURL(otpauthUri, { width: 220, margin: 1 });
+    return NextResponse.json({ secret, otpauthUri, qrDataUrl });
   }
 
   if (data.action === "ENABLE_MFA") {
