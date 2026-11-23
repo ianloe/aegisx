@@ -28,6 +28,7 @@ import {
   Radar,
   Lock,
   GraduationCap,
+  Fingerprint,
 } from "lucide-react";
 import { cn, formatEnumLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Admin Config", icon: Settings, roles: ["ADMIN", "GOVERNANCE_OFFICE"] },
   { href: "/manual", label: "User Manual", icon: BookOpen },
   { href: "/learn", label: "Training Portal", icon: GraduationCap },
+  { href: "/security", label: "Account Security", icon: Fingerprint },
   { href: "/about", label: "About & Frameworks", icon: Info },
 ];
 

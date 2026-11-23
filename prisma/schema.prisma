@@ -240,8 +240,10 @@ model User {
   role               Role            @relation(fields: [roleId], references: [id])
   businessUnitId     String?
   businessUnit       BusinessUnit?   @relation(fields: [businessUnitId], references: [id])
-  isActive           Boolean         @default(true)
-  createdAt          DateTime        @default(now())
+  isActive              Boolean              @default(true)
+  mfaEnabled            Boolean              @default(false)
+  mfaSecret             String?
+  createdAt             DateTime             @default(now())
   updatedAt          DateTime        @updatedAt
   ownedAssets        AIAsset[]       @relation("AssetOwner")
   overseenAssets     AIAsset[]       @relation("AssetOverseer")
@@ -258,8 +260,9 @@ model User {
   auditLogs          AuditLogEntry[]
   gateRequestsMade   StageGateRequest[] @relation("GateRequester")
   gateReviewsMade    StageGateRequest[] @relation("GateReviewer")
-  vendorReviews      VendorAssessment[]
-  telemetryApiKeys   TelemetryApiKey[]
+  vendorReviews         VendorAssessment[]
+  telemetryApiKeys      TelemetryApiKey[]
+  webAuthnCredentials   WebAuthnCredential[]
 }
 
 model AIAsset {
@@ -977,4 +980,30 @@ model ProtocolCallEvent {
   createdAt       DateTime     @default(now())
 
   @@index([sourceAssetId, protocol, createdAt])
+}
+
+model WebAuthnCredential {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId  String    @unique
+  publicKeySpki String
+  algorithm     Int       @default(-7)
+  counter       Int       @default(0)
+  deviceName    String    @default("Passkey")
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+
+  @@index([userId])
+}
+
+model AuthChallenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  userId    String?
+  type      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
