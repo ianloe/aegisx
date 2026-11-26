@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit";
 import { buildOtpAuthUri, generateTotpSecret, verifyTotpCode } from "@/lib/auth/mfa";
 import { generateWebAuthnChallenge, getRpInfo } from "@/lib/auth/passkey";
+import { checkRateLimit } from "@/lib/auth/rate-limit";
 
 export async function GET() {
   const session = await getSession();
@@ -63,6 +64,13 @@ export async function POST(request: Request) {
   }
 
   if (data.action === "ENABLE_MFA") {
+    const mfaRate = checkRateLimit(`mfa-manage:${session.id}`, 5, 5 * 60 * 1000);
+    if (!mfaRate.allowed) {
+      return NextResponse.json(
+        { error: `Too many MFA verification attempts. Try again in ${mfaRate.retryAfterSeconds}s.` },
+        { status: 429 },
+      );
+    }
     if (!verifyTotpCode(data.secret, data.code)) {
       return NextResponse.json({ error: "Invalid 6-digit authenticator code." }, { status: 400 });
     }
@@ -81,6 +89,13 @@ export async function POST(request: Request) {
   }
 
   if (data.action === "DISABLE_MFA") {
+    const mfaRate = checkRateLimit(`mfa-manage:${session.id}`, 5, 5 * 60 * 1000);
+    if (!mfaRate.allowed) {
+      return NextResponse.json(
+        { error: `Too many MFA verification attempts. Try again in ${mfaRate.retryAfterSeconds}s.` },
+        { status: 429 },
+      );
+    }
     const user = await prisma.user.findUnique({
       where: { id: session.id },
       select: { mfaSecret: true },

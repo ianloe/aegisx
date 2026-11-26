@@ -5,6 +5,7 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 import { requireApiSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit";
+import { validateSafeHttpUrl } from "@/lib/security/url-guard";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -95,6 +96,10 @@ export async function POST(request: Request) {
 
   if (!title || !url || !entityId) {
     return NextResponse.json({ error: "Title, URL, and target record are required." }, { status: 400 });
+  }
+  const urlCheck = validateSafeHttpUrl(url, { allowPrivateNetwork: true });
+  if (!urlCheck.valid) {
+    return NextResponse.json({ error: urlCheck.error || "Only http:// and https:// URLs are allowed." }, { status: 400 });
   }
 
   const created = await prisma.$transaction(async (tx) => {

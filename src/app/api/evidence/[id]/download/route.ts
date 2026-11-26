@@ -21,10 +21,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   try {
     const fileBuffer = await fs.readFile(/*turbopackIgnore: true*/ fullPath);
+    const safeDownloadName = (item.originalFilename || safeName).replace(/[\r\n\x00-\x1f\x7f"\\]/g, "_");
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": item.mimeType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${(item.originalFilename || safeName).replace(/"/g, "")}"`,
+        "Content-Disposition": `attachment; filename="${safeDownloadName}"`,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox",
       },
     });
   } catch {

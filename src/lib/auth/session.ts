@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { RoleCode } from "@prisma/client";
 import { AuthenticatedUser } from "./provider";
 import { hasPermission, Permission } from "@/lib/rbac";
+import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "aegisx_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12; // 12 hours
@@ -53,7 +54,13 @@ export function decodeSession(token: string | undefined): SessionPayload | null 
 
   try {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf-8")) as SessionPayload;
-    if (!parsed.exp || parsed.exp < Math.floor(Date.now() / 1000)) {
+    if (
+      !parsed.exp ||
+      parsed.exp < Math.floor(Date.now() / 1000) ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.email !== "string" ||
+      typeof parsed.role !== "string"
+    ) {
       return null;
     }
     return parsed;
@@ -65,7 +72,32 @@ export function decodeSession(token: string | undefined): SessionPayload | null 
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  return decodeSession(token);
+  const decoded = decodeSession(token);
+  if (!decoded) return null;
+
+  // Verify the user is still active and reflect any role or BU changes immediately
+  const dbUser = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    select: {
+      isActive: true,
+      email: true,
+      name: true,
+      businessUnitId: true,
+      role: { select: { code: true } },
+    },
+  });
+  if (!dbUser || !dbUser.isActive) {
+    return null;
+  }
+
+  return {
+    id: decoded.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    role: dbUser.role.code,
+    businessUnitId: dbUser.businessUnitId,
+    exp: decoded.exp,
+  };
 }
 
 export async function setSessionCookie(user: AuthenticatedUser): Promise<void> {

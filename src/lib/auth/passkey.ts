@@ -14,9 +14,23 @@ export function generateWebAuthnChallenge(): string {
 }
 
 export function getRpInfo(request: Request): { rpId: string; origin: string } {
-  const hostHeader = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
-  const proto = request.headers.get("x-forwarded-proto") || (hostHeader.startsWith("localhost") || hostHeader.startsWith("127.0.0.1") ? "http" : "https");
-  const rpId = hostHeader.split(":")[0];
+  if (process.env.APP_ORIGIN) {
+    try {
+      const originUrl = new URL(process.env.APP_ORIGIN);
+      return {
+        rpId: process.env.WEBAUTHN_RP_ID || originUrl.hostname,
+        origin: originUrl.origin,
+      };
+    } catch {
+      // Fall through to host header if APP_ORIGIN is malformed
+    }
+  }
+  const rawHost = (request.headers.get("host") || "localhost:3000").trim();
+  const hostHeader = /^[a-zA-Z0-9.-]+(:\d+)?$/.test(rawHost) ? rawHost : "localhost:3000";
+  const hostname = hostHeader.split(":")[0]?.toLowerCase() || "localhost";
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+  const proto = isLocal ? "http" : "https";
+  const rpId = process.env.WEBAUTHN_RP_ID || hostname;
   return {
     rpId,
     origin: `${proto}://${hostHeader}`,

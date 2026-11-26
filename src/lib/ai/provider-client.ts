@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { validateSafeOutboundUrl } from "../security/url-guard";
 
 export type AiProviderType = "OPENAI" | "OPENROUTER" | "GEMINI" | "ANTHROPIC" | "CUSTOM_OPENAI";
 
@@ -105,10 +106,14 @@ export async function generateAiCompletion(params: {
 
   try {
     if (cfg.provider === "GEMINI") {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cfg.apiKey,
+        },
+        redirect: "error",
         signal: controller.signal,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: params.systemPrompt }] },
@@ -136,6 +141,7 @@ export async function generateAiCompletion(params: {
           "x-api-key": cfg.apiKey,
           "anthropic-version": "2023-06-01",
         },
+        redirect: "error",
         signal: controller.signal,
         body: JSON.stringify({
           model,
@@ -158,8 +164,14 @@ export async function generateAiCompletion(params: {
     }
 
     // OPENAI, OPENROUTER, CUSTOM_OPENAI
-    if (cfg.provider === "CUSTOM_OPENAI" && !cfg.baseUrl.trim()) {
-      throw new Error("Base URL is required for Custom OpenAI-Compatible providers.");
+    if (cfg.provider === "CUSTOM_OPENAI") {
+      if (!cfg.baseUrl.trim()) {
+        throw new Error("Base URL is required for Custom OpenAI-Compatible providers.");
+      }
+      const check = await validateSafeOutboundUrl(cfg.baseUrl, { allowPrivateNetwork: true });
+      if (!check.valid) {
+        throw new Error(check.error || "Invalid Custom Base URL.");
+      }
     }
     const url = buildChatCompletionsUrl(cfg.provider, cfg.baseUrl);
     const headers: Record<string, string> = {
@@ -176,6 +188,7 @@ export async function generateAiCompletion(params: {
     const res = await fetch(url, {
       method: "POST",
       headers,
+      redirect: "error",
       signal: controller.signal,
       body: JSON.stringify({
         model,

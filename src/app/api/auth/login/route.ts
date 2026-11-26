@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authProvider } from "@/lib/auth/provider";
 import { setSessionCookie } from "@/lib/auth/session";
 import { verifyTotpCode } from "@/lib/auth/mfa";
+import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { log } from "@/lib/logger";
@@ -22,6 +23,15 @@ const loginSchema = z.union([
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`login:${ip}`, 10, 5 * 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Too many sign-in attempts. Try again in ${rate.retryAfterSeconds}s.` },
+        { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } },
+      );
+    }
+
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
@@ -29,6 +39,16 @@ export async function POST(request: Request) {
     }
 
     if ("challengeToken" in parsed.data) {
+      const mfaRate = checkRateLimit(`mfa:${parsed.data.challengeToken}`, 5, 5 * 60 * 1000);
+      if (!mfaRate.allowed) {
+        await prisma.authChallenge.deleteMany({
+          where: { challenge: parsed.data.challengeToken, type: "MFA_PENDING" },
+        });
+        return NextResponse.json(
+          { error: "Too many invalid MFA attempts. Please sign in again." },
+          { status: 429 },
+        );
+      }
       const challengeRow = await prisma.authChallenge.findUnique({
         where: { challenge: parsed.data.challengeToken },
       });
@@ -71,6 +91,15 @@ export async function POST(request: Request) {
         afterState: { role: sessionUser.role },
       });
       return NextResponse.json({ user: sessionUser });
+    }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    const emailRate = checkRateLimit(`login-email:${normalizedEmail}`, 10, 5 * 60 * 1000);
+    if (!emailRate.allowed) {
+      return NextResponse.json(
+        { error: `Too many sign-in attempts for this account. Try again in ${emailRate.retryAfterSeconds}s.` },
+        { status: 429, headers: { "Retry-After": String(emailRate.retryAfterSeconds) } },
+      );
     }
 
     const user = await authProvider.authenticateCredentials(parsed.data.email, parsed.data.password);

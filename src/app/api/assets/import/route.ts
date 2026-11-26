@@ -28,10 +28,16 @@ export async function POST(request: Request) {
   if (!csvText.trim()) {
     return NextResponse.json({ error: "CSV content is empty." }, { status: 400 });
   }
+  if (csvText.length > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: "CSV payload exceeds maximum size of 5 MB." }, { status: 400 });
+  }
 
   const { rows } = parseCsv(csvText);
   if (rows.length === 0) {
     return NextResponse.json({ error: "No data rows found in CSV." }, { status: 400 });
+  }
+  if (rows.length > 5000) {
+    return NextResponse.json({ error: "CSV import is limited to 5,000 rows per request." }, { status: 400 });
   }
 
   const [businessUnits, users] = await Promise.all([

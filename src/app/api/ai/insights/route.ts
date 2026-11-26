@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth/session";
 import { hasPermission } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { generateAiCompletion } from "@/lib/ai/provider-client";
+import { checkRateLimit } from "@/lib/auth/rate-limit";
 
 const bodySchema = z.object({
   scope: z.enum(["EXECUTIVE_DASHBOARD", "SHADOW_AI", "ASSURANCE_AND_RISK"]),
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session || !hasPermission(session.role, "assets:read")) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  const rate = checkRateLimit(`ai-insights:${session.id}`, 10, 5 * 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: `AI insights rate limit reached. Try again in ${rate.retryAfterSeconds}s.` },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } },
+    );
   }
 
   const body = await request.json();

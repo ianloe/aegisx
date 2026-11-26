@@ -3,20 +3,31 @@ import { z } from "zod";
 import { AlertChannel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireApiSession } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/rbac";
 import { writeAuditLog } from "@/lib/audit";
 import { dispatchAlert } from "@/lib/governance/alerts";
+import { maskSecretValue, validateSafeHttpUrl } from "@/lib/security/url-guard";
 
 export async function GET() {
   const auth = await requireApiSession("assets:read");
   if (auth.error) return auth.error;
 
+  const isAdmin = hasPermission(auth.session.role, "admin:config");
   const [rules, deliveries, unreadCount] = await Promise.all([
     prisma.alertRule.findMany({ orderBy: { eventType: "asc" } }),
     prisma.alertDelivery.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.alertDelivery.count({ where: { isRead: false } }),
   ]);
 
-  return NextResponse.json({ rules, deliveries, unreadCount });
+  const safeRules = isAdmin
+    ? rules
+    : rules.map((r) => ({
+        ...r,
+        webhookUrl: maskSecretValue(r.webhookUrl),
+        telegramChatId: r.telegramChatId ? "Configured" : null,
+      }));
+
+  return NextResponse.json({ rules: safeRules, deliveries, unreadCount });
 }
 
 const patchAlertSchema = z.discriminatedUnion("action", [
@@ -58,6 +69,15 @@ export async function PATCH(request: Request) {
   if (auth.error) return auth.error;
 
   const ruleData = parsed.data;
+  if (ruleData.channel === "WEBHOOK" && ruleData.webhookUrl) {
+    const check = validateSafeHttpUrl(ruleData.webhookUrl, {
+      allowPrivateNetwork: process.env.ALLOW_LOCAL_WEBHOOKS === "true",
+    });
+    if (!check.valid) {
+      return NextResponse.json({ error: check.error || "Invalid webhook URL." }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const before = await tx.alertRule.findUnique({ where: { id: ruleData.id } });
     if (!before) return null;
@@ -76,8 +96,8 @@ export async function PATCH(request: Request) {
       action: "UPDATE_ALERT_RULE",
       entityType: "ALERT_RULE",
       entityId: rule.id,
-      beforeState: before,
-      afterState: rule,
+      beforeState: { ...before, webhookUrl: maskSecretValue(before.webhookUrl) },
+      afterState: { ...rule, webhookUrl: maskSecretValue(rule.webhookUrl) },
     });
     return rule;
   });

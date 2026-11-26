@@ -8,6 +8,9 @@ import { writeAuditLog } from "@/lib/audit";
 export async function GET() {
   const auth = await requireApiSession("assets:read");
   if (auth.error) return auth.error;
+  if (auth.session.role !== "ADMIN" && auth.session.role !== "GOVERNANCE_OFFICE") {
+    return NextResponse.json({ error: "Governance Office or Administrator access required." }, { status: 403 });
+  }
 
   const [users, roles, businessUnits] = await Promise.all([
     prisma.user.findMany({

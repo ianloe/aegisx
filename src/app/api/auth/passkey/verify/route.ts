@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { setSessionCookie } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit";
 import { getRpInfo, verifyWebAuthnAssertion } from "@/lib/auth/passkey";
+import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit";
 
 const verifySchema = z.object({
   challenge: z.string().min(1),
@@ -14,6 +15,15 @@ const verifySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rate = checkRateLimit(`passkey:${ip}`, 10, 5 * 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: `Too many passkey attempts. Try again in ${rate.retryAfterSeconds}s.` },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } },
+    );
+  }
+
   const body = await request.json();
   const parsed = verifySchema.safeParse(body);
   if (!parsed.success) {
@@ -57,6 +67,13 @@ export async function POST(request: Request) {
 
   if (!check.valid) {
     return NextResponse.json({ error: check.error || "Passkey verification failed." }, { status: 401 });
+  }
+
+  if (cred.counter > 0 && check.newCounter <= cred.counter) {
+    return NextResponse.json(
+      { error: "Passkey signature counter rollback detected (possible cloned authenticator)." },
+      { status: 401 },
+    );
   }
 
   await Promise.all([

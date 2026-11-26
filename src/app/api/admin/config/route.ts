@@ -4,13 +4,20 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireApiSession } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit";
+import { AI_PROVIDER_CONFIG_KEY } from "@/lib/ai/provider-client";
 
 export async function GET() {
   const auth = await requireApiSession("assets:read");
   if (auth.error) return auth.error;
+  if (auth.session.role !== "ADMIN" && auth.session.role !== "GOVERNANCE_OFFICE") {
+    return NextResponse.json({ error: "Governance Office or Administrator access required." }, { status: 403 });
+  }
 
   const [configs, frameCriteria, performanceProfiles, frameworks, valueModels] = await Promise.all([
-    prisma.governanceConfig.findMany({ orderBy: { key: "asc" } }),
+    prisma.governanceConfig.findMany({
+      where: { key: { not: AI_PROVIDER_CONFIG_KEY } },
+      orderBy: { key: "asc" },
+    }),
     prisma.frameCriterion.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.performanceProfile.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.framework.findMany({
@@ -65,6 +72,12 @@ export async function PATCH(request: Request) {
   }
 
   const data = parsed.data;
+  if (data.type === "GOVERNANCE_CONFIG" && data.key === AI_PROVIDER_CONFIG_KEY) {
+    return NextResponse.json(
+      { error: "AI provider settings must be updated via /api/ai/config." },
+      { status: 400 },
+    );
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     if (data.type === "GOVERNANCE_CONFIG") {

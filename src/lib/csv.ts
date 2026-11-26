@@ -4,7 +4,7 @@
 export function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
   let str = String(value);
-  if (/^[=+\-@]/.test(str)) {
+  if (/^[\s\t\r]*[=+\-@]|^[\t\r]/.test(str)) {
     str = `'${str}`;
   }
   if (/[",\r\n]/.test(str)) {
